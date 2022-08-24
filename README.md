@@ -9,9 +9,18 @@ A tool for streamlined copying of Microsoft Excel spreadsheets and deleting only
 Clients and coworkers often use Excel spreadsheets because they're more intuitive than proper databases. So large spreadsheets commonly need to be broken down into a series of smaller spreadsheets, with each copy retaining only a subset of the original rows, and without destroying the original spreadsheet. I wrote this module (building on [openpyxl](https://pypi.org/project/openpyxl/), obviously) to iteratively copy the original 'master' spreadsheet and delete the unnecessary rows in each copy, and then to add back in any necessary Excel formulas in each remaining row.
 
 
+## To install
+
+```
+pip install git+https://github.com/JamesPImes/xlsx_copycull@master
+```
+
+(I'll put it up on PyPI when I iron out a few kinks. Feel free to give me feedback in the meantime!)
+
+
 ## How to use
 
-Basically, we prepare a dict whose keys specify which column headers to look under, and each of whose values is a function to apply to the corresponding cell value in each row, to determine whether to delete a given row. Like so:
+Basically, we prepare a dict whose keys specify which column headers to look under, and each of whose values is a function to apply to the corresponding cell value in each row, to determine whether to delete that row. Like so:
 
 ```
 delete_conditions = {
@@ -20,12 +29,14 @@ delete_conditions = {
     }
 ```
 
-We can pass this to the simplified `xlsx_copycull.copycull()` function (with other required arguments) -- see Examples 1 and 2 below.
+*The function need not be a lambda -- it can be any function that takes a single argument (a given cell's value) and returns a bool or bool-like value.*
 
-Or we can use it with `WorkbookWrapper` and `WorksheetWrapper` objects if we need to cull rows in multiple sheets within the workbook, or do other tasks with the underlying `Workbook` or `Worksheet` objects.
+We can pass this dict to the simplified `xlsx_copycull.copycull()` function (with other required arguments) -- see [Example 1](#example1) and [Example 2](#example2) below.
+
+Or we can [use it with `WorkbookWrapper` and `WorksheetWrapper` objects](#wbws) if we need to cull rows in multiple sheets within the workbook, or do other tasks with the underlying `Workbook` or `Worksheet` objects.
 
 
-## Example 1 (basic)
+### <a name="example1">Example 1</a> - `copycull()`
 
 Copy a spreadsheet only a single time, and retain only those rows whose `'Price'` value is greater than 1000 *__and__* whose `'Color'` value is `'blue'` or `'red'`. Save the copy to the same directory as the original spreadsheet.
 
@@ -63,7 +74,7 @@ If we wanted to delete rows where the `'Price'` was less than or equal to 1000, 
 It is currently not possible to mix and match bool operators in a single pass (e.g., to delete row where conditions A and B are True, or condition C is True).
 
 
-## Example 2
+### <a name="example2">Example 2</a> - generate multiple copies with `copycull()` and add Excel formulas
 
 We have a spreadsheet that shows data on various products, including `'Price Per Unit'` (ranging from $1 to $300 per unit). We want to split this spreadsheet up into separate spreadsheets for $1 to $100, $100 to $200, and $200 to $300.
 
@@ -114,8 +125,7 @@ for min_, max_ in split_mins_maxes:
     )
 ```
 
-
-## Have more control with `WorkbookWrapper` and `WorksheetWrapper` objects
+### <a name="wbws">Have more control with `WorkbookWrapper` and `WorksheetWrapper` objects</a>
 
 Creating a `WorkbookWrapper` object automatically copies the master spreadsheet and opens the copy. The original spreadsheet is never touched after the `WorkbookWrapper` is created.
 
@@ -126,7 +136,7 @@ from xlsx_copycull import WorkbookWrapper, WorksheetWrapper
 master_spreadsheet = Path(r"C:\Example\master3.xlsx")
 
 wb_wrapper = WorkbookWrapper(
-    wb_fp = master_spreadsheet,
+    wb_fp=master_spreadsheet,
     output_filename='test_copy.xlsx',
     copy_to_dir=master_spreadsheet.parent
 )
@@ -180,7 +190,9 @@ ws_wrapper2.cull(
 
 We can also add formulas to the sheets. (This will also save the copied workbook unless we specify `save=False`.)
 
-By default, will apply to all unprotected rows (which is all rows below the header, unless specified otherwise by the user at init).  But we can also choose to write formulas to only certain rows with `rows=<list of ints>`.
+By default, will apply to all unprotected rows**.  But we can also choose to write formulas to only certain rows with `rows=<list of ints>`.
+
+** *(All rows below the header are unprotected by default, unless specified otherwise by the user when staging or initializing the worksheet -- reference the docstrings for `WorkbookWrapper.stage_ws` and `WorksheetWrapper.__init__` if you need this functionality).*
 
 ```
 formulas_to_add = {
