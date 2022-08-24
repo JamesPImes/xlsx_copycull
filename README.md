@@ -22,12 +22,12 @@ delete_conditions = {
 
 *The function need not be a lambda -- it can be any function that takes a single argument (a given cell's value) and returns a bool or bool-like value.*
 
-We can pass this dict to the simplified `xlsx_copycull.copy_cull_spreadsheet()` function (with other required arguments) -- see [Example 1](#example1) and [Example 2](#example2) below.
+We can pass this dict to the simplified `xlsx_copycull.copycull()` function (with other required arguments) -- see [Example 1](#example1) and [Example 2](#example2) below.
 
 Or we can [use it with `WorkbookWrapper` and `WorksheetWrapper` objects](#wbws) if we need to cull rows in multiple sheets within the workbook, or do other tasks with the underlying `Workbook` or `Worksheet` objects.
 
 
-### <a name="example1">Example 1</a> - `copy_cull_spreadsheet()`
+### <a name="example1">Example 1</a> - `copycull()`
 
 Copy a spreadsheet only a single time, and retain only those rows whose `'Price'` value is greater than 1000 *__and__* whose `'Color'` value is `'blue'` or `'red'`. Save the copy to the same directory as the original spreadsheet.
 
@@ -45,7 +45,7 @@ delete_conditions = {
     'Color': lambda cell_val: cell_val not in ('blue', 'red')
     }
 
-xlsx_copycull.copy_cull_spreadsheet(
+xlsx_copycull.copycull(
     wb_fp=master_spreadsheet,
     ws_name='Sheet1',
     header_row=1,
@@ -65,7 +65,7 @@ If we wanted to delete rows where the `'Price'` was less than or equal to 1000, 
 It is currently not possible to mix and match bool operators in a single pass (e.g., to delete row where conditions A and B are True, or condition C is True).
 
 
-### <a name="example2">Example 2</a> - generate multiple copies with `copy_cull_spreadsheet()` and add Excel formulas
+### <a name="example2">Example 2</a> - generate multiple copies with `copycull()` and add Excel formulas
 
 We have a spreadsheet that shows data on various products, including `'Price Per Unit'` (ranging from $1 to $300 per unit). We want to split this spreadsheet up into separate spreadsheets for $1 to $100, $100 to $200, and $200 to $300.
 
@@ -105,7 +105,7 @@ for min_, max_ in split_mins_maxes:
     # Copy the spreadsheet, delete those rows in 'Sheet1' whose value
     # in 'Price Per Unit' meets the delete_condition, and then write
     # the formulas in the remaining cells in Column C. 
-    xlsx_copycull.copy_cull_spreadsheet(
+    xlsx_copycull.copycull(
         wb_fp=master_spreadsheet,
         ws_name='Sheet1',
         header_row=1,
@@ -217,7 +217,7 @@ We can reopen the copied spreadsheet with `wb_wrapper.open()`, which will repopu
 
 ## Warnings
 
-As with any script that uses openpyxl to modify spreadsheets, any formulas that exist in the original spreadsheet will most likely NOT survive the insertion or deletion of rows or columns (or changing of worksheet names, etc.). Thus, it is highly recommended that you flatten all existing formulas, and use the `.add_formulas()` method in the `WorksheetWrapper` class -- or use the `copy_cull_spreadsheet(<...>, formulas=<...>)` function -- to the extent possible for your use case.
+As with any script that uses openpyxl to modify spreadsheets, any formulas that exist in the original spreadsheet will most likely NOT survive the insertion or deletion of rows or columns (or changing of worksheet names, etc.). Thus, it is highly recommended that you flatten all existing formulas, and use the `.add_formulas()` method in the `WorksheetWrapper` class -- or use the `copycull(<...>, formulas=<...>)` function -- to the extent possible for your use case.
 
 Also, you should familiarize yourself with the security warnings that openpyxl gives [on their PyPI page](https://pypi.org/project/openpyxl/).
 
