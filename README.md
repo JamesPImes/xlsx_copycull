@@ -1,9 +1,7 @@
 
 # xlsx_copycull
 
-A tool for streamlined copying of Microsoft Excel spreadsheets and deleting only those rows that meet a user-specified condition, based on the value of a given cell in each row.
-
-Copyright © 2022, James P. Imes
+A tool for streamlined copying of Microsoft Excel spreadsheets and deleting only those rows that meet one or more user-specified conditions, based on the value of a given cell or cells in each row.
 
 
 ## Background
@@ -78,16 +76,14 @@ import xlsx_copycull
 master_spreadsheet = Path(r'C:\Example\master2.xlsx')
 
 # This dict is keyed by column letter, and its value is a constructor
-# for the appropriate Excel formula, based on the row number -- i.e.
-# we'll add to each cell in Column C a formula to add cells D and F
-# for that row (i.e. cell C2 will be '=D2+F2', etc.).
+# for the appropriate Excel formula.
 formulas_to_add = {
     "C": lambda row_num: "=(D{0}+F{0})/$A$1".format(row_num)
 }
 
 # We'll split up our spreadsheet into these ranges -- i.e. one spreadsheet 
 # for $1/unit to $100/unit; another for $101/unit to $200/unit; etc.
-split_mins_maxes = [(1, 100), (101, 200), (201, 300)]
+split_mins_maxes = [(1, 100), (100, 200), (200, 300)]
 
 for min_, max_ in split_mins_maxes:
     
@@ -101,7 +97,7 @@ for min_, max_ in split_mins_maxes:
     # (Checks the value under the 'Price Per Unit' column against the 
     # lambda function.)
     delete_conditions = {
-        'Price Per Unit': lambda cell_val: (cell_val < min_ or cell_val > max_)
+        'Price Per Unit': lambda cell_val: (cell_val <= min_ or cell_val > max_)
         }
     
     # Copy the spreadsheet, delete those rows in 'Sheet1' whose value
