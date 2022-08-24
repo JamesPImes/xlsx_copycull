@@ -61,7 +61,8 @@ xlsx_copycull.copycull(
     delete_conditions=delete_conditions,
     bool_oper='AND',
     output_filename='new_copy.xlsx',
-    copy_to_dir=copy_to_dir)
+    copy_to_dir=copy_to_dir
+)
 ```
 
 NOTE: `bool_oper='AND'` is the default (i.e. delete rows where all of the specified conditions are true).
@@ -120,7 +121,7 @@ for min_, max_ in split_mins_maxes:
         delete_conditions=delete_conditions,
         output_filename=fn,
         copy_to_dir=copy_to_dir,
-        formulas=formulas_to_add)
+        formulas=formulas_to_add
     )
 ```
 
