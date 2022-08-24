@@ -2,8 +2,8 @@
 
 """
 Tools for generating copies of a spreadsheet and culling rows based on
-some condition (e.g., delete all rows whose cell in Column "A" has a
-value less than 100). Can optionally add dynamic Microsoft Excel
+some condition (e.g., delete all rows whose cell in a certain column has
+a value less than 100). Can optionally add dynamic Microsoft Excel
 formulas afterward.
 """
 
@@ -202,9 +202,11 @@ class WorkbookWrapper:
     def delete_ws(self, ws_name, save=True):
         """
         Delete a worksheet from the workbook. (The worksheet need not be
-        staged.) Will automatically save after.
+        staged.) Will automatically save after unless ``save=False`` is
+        passed.
         :param ws_name: The name of the worksheet to discard.
-        :param save: Whether to save after this action.
+        :param save: Whether to save after this action. (Defaults to
+        ``True``.)
         :return: None
         """
         self.mandate_loaded()
@@ -386,23 +388,26 @@ class WorksheetWrapper:
 
     def cull(
             self,
-            delete_condition,
-            match_col_name: str,
+            delete_conditions: dict,
+            bool_oper='AND',
             protected_rows=None,
             save=True):
         """
-        Cull the spreadsheet, based on the ``delete_condition``.
+        Cull the spreadsheet, based on the ``delete_conditions``.  If
+        more than one delete_condition is used, specify whether to apply
+        'AND', 'OR', or 'XOR' boolean logic to the resulting sets by
+        passing one of those as ``bool_oper`` (defaults to 'AND').
 
         NOTE: ``protected_rows`` is a list (or set) of integers, being
-        the row numbers for those rows that should not be deleted
+        the row numbers for those rows that should NEVER be deleted
         (indexed to 1). If rows above those numbers get deleted, the
         resulting indexes in ``protected_rows`` would not be accurate,
         so this method adjusts the protected rows to their new position.
-        The resulting row numbers are stored to
+        The resulting row numbers are stored to attribute
         ``.last_protected_rows``.  IF AND ONLY IF ``protected_rows`` is
         NOT passed as an arg here, it will be pulled from
-        ``.protected_rows``, and the resulting protected_rows will ALSO
-        be stored to ``.protected_rows`` (in addition to
+        ``.protected_rows``, and the resulting ``protected_rows`` will
+        ALSO be stored to ``.protected_rows`` (in addition to
         ``.last_protected_rows``).
 
         (The reason for this design choice was that rows may need to be
@@ -412,13 +417,19 @@ class WorksheetWrapper:
         after calling ``.cull()`` but before calling the next method,
         which might change them.)
 
-        :param delete_condition: A function to be applied to the value of
-        the cell, which returns a bool. If the function returns True (or
-        a True-like value) when applied to the cell's value, that row
-        will be deleted.
+        :param delete_conditions: A dict of column_header-to-
+        delete_condition pairs, to determine which rows should be
+        deleted. Specifically, keyed by the header of the column to
+        check under, and whose value is a function to be applied to the
+        value of the cell under that column, which returns a bool. If
+        the function returns True (or a True-like value) when applied to
+        the cell's value, that row will be marked for deletion.
 
-        :param match_col_name: The column header (a string) of the
-        column where we'll look for matches.
+        :param bool_oper: When using more than one delete conditions
+        (i.e. more than one key in the dict), use this to determine
+        whether to apply OR, AND, or XOR to the resulting rows to be
+        deleted.  Pass one of the following:  'AND', 'OR', 'XOR'.
+        (Defaults to 'AND'.)
 
         :param protected_rows: (Optional) A list-like object containing
         the rows that should never be deleted. If not specified here,
@@ -432,8 +443,7 @@ class WorksheetWrapper:
         """
         self.mandate_loaded()
 
-        if delete_condition is None:
-            # If still None, do nothing.
+        if not delete_conditions:
             return None
 
         store_protected_rows = False
@@ -444,19 +454,27 @@ class WorksheetWrapper:
         header_row = self.header_row
 
         ws = self.ws
-        match_col = self.find_match_col(header_row, match_col_name)
+        all_to_delete = []
+        # Apply each delete condition to the appropriate column.
+        for field, delete_condition in delete_conditions.items():
+            match_col = self.find_match_col(header_row, field)
 
-        # Mark for deletion all those rows that do not match our criteria.
-        to_delete = [
-            j for j in range(1, ws.max_row + 1)
-            if (j not in self.protected_rows
-                and delete_condition(ws.cell(row=j, column=match_col).value)
-                )
-        ]
+            # Mark for deletion all those rows that match our criteria.
+            # Convert to a set and add it to the list.
+            to_delete = (
+                j for j in range(1, ws.max_row + 1)
+                if (j not in self.protected_rows
+                    and delete_condition(ws.cell(row=j, column=match_col).value)
+                    )
+            )
+            all_to_delete.append(set(to_delete))
+
+        # Apply the boolean operator to determine which rows to delete.
+        final_to_delete = self._apply_bool_operator(all_to_delete, bool_oper)
 
         # convert our raw to_delete list down to a list of 2-tuples (ranges,
         # inclusive of min/max)
-        rges = find_ranges(to_delete)
+        rges = find_ranges(final_to_delete)
 
         # Delete ranges of rows from bottom-up.
         rges.reverse()
@@ -580,14 +598,44 @@ class WorksheetWrapper:
             self.save()
         return None
 
+    @staticmethod
+    def _apply_bool_operator(list_of_sets: list, operator: str) -> set:
+        """
+        INTERNAL USE:
+        Apply the specified boolean operator to a list of sets.
+
+        :param list_of_sets: A list of sets.
+        :param operator: Which boolean operator to apply -- either
+        'AND', 'OR', or 'XOR'.
+        :return: A set of the resulting elements.
+        """
+        operator = operator.upper()
+        final = set()
+        if list_of_sets:
+            final = list_of_sets.pop()
+        if operator == 'OR':
+            for new_set in list_of_sets:
+                final.update(new_set)
+        elif operator == 'AND':
+            for new_set in list_of_sets:
+                final.intersection_update(new_set)
+        elif operator == 'XOR':
+            for new_set in list_of_sets:
+                final = final ^ new_set
+        else:
+            raise ValueError(
+                f"`operator` must be one of ['OR', 'AND', 'XOR']. "
+                f"Passed {operator!r}")
+        return final
+
 
 def copy_cull_spreadsheet(
         wb_fp: Path,
         ws_name: str,
-        match_col_name: str,
         header_row: int,
-        delete_condition,
+        delete_conditions: dict,
         output_filename: str,
+        bool_oper: str = 'AND',
         copy_to_dir: Path = None,
         first_modifiable_row: int = -1,
         protected_rows=None,
@@ -595,36 +643,53 @@ def copy_cull_spreadsheet(
         formulas=None):
     """
     Copy a target spreadsheet and cull the copy down to only those rows
-    that do NOT match the `delete_condition`.
+    that do NOT match the ``delete_conditions``.  Optionally add Excel
+    formulas with ``formulas=<dict>`` (see below).
 
     (A function that combines the basic functionality of WorkbookWrapper
     and WorksheetWrapper objects. Returns the WorkbookWrapper object.)
 
     :param wb_fp: The filepath to the source .xlsx file.
+
     :param ws_name: The name of the worksheet within that workbook to
     cull.
-    :param match_col_name: The column header (a string) of the column
-    where we'll look for matches.
+
     :param header_row: The row containing headers (an int, indexed to 1)
+
     :param first_modifiable_row: (Optional) The first row that may be
     deleted (an int, indexed to 1). If not set, will default to the
     first row after the `header_row`.
-    :param delete_condition: A function to be applied to the value of
-    the cell, which returns a bool. If the function returns True (or a
-    True-like value) when applied to the cell's value, that row will be
-    deleted.
+
+    :param delete_conditions: A dict of column_header-to-
+    delete_condition pairs, to determine which rows should be deleted.
+    Specifically, keyed by the header of the column to check under, and
+    whose value is a function to be applied to the value of the cell
+    under that column, which returns a bool. If the function returns
+    True (or a True-like value) when applied to the cell's value, that
+    row will be marked for deletion.
+
+    :param bool_oper: When using more than one delete conditions
+    (i.e. more than one key in the dict), use this to determine
+    whether to apply OR, AND, or XOR to the resulting rows to be
+    deleted.  Pass one of the following:  'AND', 'OR', 'XOR'.
+    (Defaults to 'AND'.)
+
     :param output_filename: The filename (NOT the full path) to which to
     the copied workbook. Should include the '.xlsx' suffix.
+
     :param copy_to_dir: Directory in which to save the copied workbook.
     If not specified, will use the same directory as the base
     spreadsheet.
+
     :param protected_rows: (Optional) A list-like object containing the
     rows that should never be deleted. Rows before `first_deletable_row`
     and the header row will be automatically added.
+
     :param rename_ws: (Optional) A string, for how to rename the
     modified worksheet. Defaults to None, in which case, it will not be
     renamed. WARNING: Using this feature will prevent `sanity_check()`
     from working.
+
     :param formulas: (Optional) A dict keyed by column name (i.e. "E")
     whose values are a function that generates the formula, based on the
     row number -- such as:
@@ -651,7 +716,7 @@ def copy_cull_spreadsheet(
         rename_ws=rename_ws)
 
     # Cull down to the desired rows.
-    wswp.cull(delete_condition=delete_condition, match_col_name=match_col_name)
+    wswp.cull(delete_conditions=delete_conditions, bool_oper=bool_oper)
 
     # Add the requested formulas (if any).
     wswp.add_formulas(formulas=formulas)
@@ -663,19 +728,18 @@ def copy_cull_spreadsheet(
     return wbwp
 
 
-def find_ranges(nums: list) -> list:
+def find_ranges(nums: set) -> list:
     """
-    Find ranges of consecutive integers in the list. Returns a list
-    of tuples, of the first and last numbers (inclusive) in each
-    sequence.
-    :param nums: A list of integers.
+    Find ranges of consecutive integers in the set. Returns a list of
+    tuples, of the first and last numbers (inclusive) in each sequence.
+    :param nums: A set of integers.
     :return: A list of 2-tuples of integers, being the min and max
     of each range (inclusive).
     """
-    nnums = nums.copy()
+    nnums = list(nums)
     nnums.sort()
-    starts = [n for n in nnums if n - 1 not in nnums]
-    ends = [n for n in nnums if n + 1 not in nnums]
+    starts = [n for n in nnums if n - 1 not in nums]
+    ends = [n for n in nnums if n + 1 not in nums]
     return [*zip(starts, ends)]
 
 
