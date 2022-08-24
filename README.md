@@ -9,6 +9,15 @@ A tool for streamlined copying of Microsoft Excel spreadsheets and deleting only
 Clients and coworkers often use Excel spreadsheets because they're more intuitive than proper databases. So large spreadsheets commonly need to be broken down into a series of smaller spreadsheets, with each copy retaining only a subset of the original rows, and without destroying the original spreadsheet. I wrote this module (building on [openpyxl](https://pypi.org/project/openpyxl/), obviously) to iteratively copy the original 'master' spreadsheet and delete the unnecessary rows in each copy, and then to add back in any necessary Excel formulas in each remaining row.
 
 
+## To install
+
+```
+pip install git+https://github.com/JamesPImes/xlsx_copycull@master
+```
+
+(I'll put it up on PyPI when I iron out a few kinks. Feel free to give me feedback in the meantime!)
+
+
 ## How to use
 
 Basically, we prepare a dict whose keys specify which column headers to look under, and each of whose values is a function to apply to the corresponding cell value in each row, to determine whether to delete that row. Like so:
