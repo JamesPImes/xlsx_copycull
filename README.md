@@ -11,7 +11,7 @@ Clients and coworkers often use Excel spreadsheets because they're more intuitiv
 
 ## How to use
 
-Basically, we prepare a dict whose keys specify which column headers to look under, and each of whose values is a function to apply to the corresponding cell value in each row, to determine whether to delete a given row. Like so:
+Basically, we prepare a dict whose keys specify which column headers to look under, and each of whose values is a function to apply to the corresponding cell value in each row, to determine whether to delete that row. Like so:
 
 ```
 delete_conditions = {
@@ -20,7 +20,9 @@ delete_conditions = {
     }
 ```
 
-We can pass this to the simplified `xlsx_copycull.copy_cull_spreadsheet()` function (with other required arguments) -- see [Example 1](#example1) and [Example 2](#example2) below.
+*The function need not be a lambda -- it can be any function that takes a single argument (a given cell's value) and returns a bool or bool-like value.*
+
+We can pass this dict to the simplified `xlsx_copycull.copy_cull_spreadsheet()` function (with other required arguments) -- see [Example 1](#example1) and [Example 2](#example2) below.
 
 Or we can [use it with `WorkbookWrapper` and `WorksheetWrapper` objects](#wbws) if we need to cull rows in multiple sheets within the workbook, or do other tasks with the underlying `Workbook` or `Worksheet` objects.
 
