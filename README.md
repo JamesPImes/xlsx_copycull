@@ -104,8 +104,8 @@ for min_, max_ in split_mins_maxes:
     # Directory where we'll save each copy.
     copy_to_dir = master_spreadsheet.parent / 'splits'
     
-    # Delete all rows where 'Price Per Unit' is outside the min and max.
-    # (Checks the value under the 'Price Per Unit' column against the 
+    # We'll delete all rows where 'Price Per Unit' is outside the min and 
+    # max. (Checks the value under the 'Price Per Unit' column against the 
     # lambda function.)
     delete_conditions = {
         'Price Per Unit': lambda cell_val: (cell_val <= min_ or cell_val > max_)
