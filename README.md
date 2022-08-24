@@ -63,7 +63,7 @@ If we wanted to delete rows where the `'Price'` was less than or equal to 1000, 
 It is currently not possible to mix and match bool operators in a single pass (e.g., to delete row where conditions A and B are True, or condition C is True).
 
 
-### <a name="example-2">Example 2</a> - generate multiple copies with `copy_cull_spreadsheet()` and add Excel formulas
+### <a name="example2">Example 2</a> - generate multiple copies with `copy_cull_spreadsheet()` and add Excel formulas
 
 We have a spreadsheet that shows data on various products, including `'Price Per Unit'` (ranging from $1 to $300 per unit). We want to split this spreadsheet up into separate spreadsheets for $1 to $100, $100 to $200, and $200 to $300.
 
