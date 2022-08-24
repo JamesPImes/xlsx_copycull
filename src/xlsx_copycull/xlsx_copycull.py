@@ -629,7 +629,7 @@ class WorksheetWrapper:
         return final
 
 
-def copy_cull_spreadsheet(
+def copycull(
         wb_fp: Path,
         ws_name: str,
         header_row: int,
@@ -766,7 +766,7 @@ def add_formulas_to_column(ws, column: str, rows: list, formula):
 
 
 __all__ = [
-    copy_cull_spreadsheet,
+    copycull,
     add_formulas_to_column,
     WorkbookWrapper,
     WorksheetWrapper

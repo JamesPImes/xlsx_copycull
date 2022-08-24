@@ -20,7 +20,7 @@ delete_conditions = {
     }
 ```
 
-We can pass this to the simplified `xlsx_copycull.copy_cull_spreadsheet()` function (with other required arguments) -- see Examples 1 and 2 below.
+We can pass this to the simplified `xlsx_copycull.copycull()` function (with other required arguments) -- see Examples 1 and 2 below.
 
 Or we can use it with `WorkbookWrapper` and `WorksheetWrapper` objects if we need to cull rows in multiple sheets within the workbook, or do other tasks with the underlying `Workbook` or `Worksheet` objects.
 
@@ -43,7 +43,7 @@ delete_conditions = {
     'Color': lambda cell_val: cell_val not in ('blue', 'red')
     }
 
-xlsx_copycull.copy_cull_spreadsheet(
+xlsx_copycull.copycull(
     wb_fp=master_spreadsheet,
     ws_name='Sheet1',
     header_row=1,
@@ -93,8 +93,8 @@ for min_, max_ in split_mins_maxes:
     # Directory where we'll save each copy.
     copy_to_dir = master_spreadsheet.parent / 'splits'
     
-    # Delete all rows where 'Price Per Unit' is outside the min and max.
-    # (Checks the value under the 'Price Per Unit' column against the 
+    # We'll delete all rows where 'Price Per Unit' is outside the min and 
+    # max. (Checks the value under the 'Price Per Unit' column against the 
     # lambda function.)
     delete_conditions = {
         'Price Per Unit': lambda cell_val: (cell_val <= min_ or cell_val > max_)
@@ -103,7 +103,7 @@ for min_, max_ in split_mins_maxes:
     # Copy the spreadsheet, delete those rows in 'Sheet1' whose value
     # in 'Price Per Unit' meets the delete_condition, and then write
     # the formulas in the remaining cells in Column C. 
-    xlsx_copycull.copy_cull_spreadsheet(
+    xlsx_copycull.copycull(
         wb_fp=master_spreadsheet,
         ws_name='Sheet1',
         header_row=1,
@@ -214,7 +214,7 @@ We can reopen the copied spreadsheet with `wb_wrapper.open()`, which will repopu
 
 ## Warnings
 
-As with any script that uses openpyxl to modify spreadsheets, any formulas that exist in the original spreadsheet will most likely NOT survive the insertion or deletion of rows or columns (or changing of worksheet names, etc.). Thus, it is highly recommended that you flatten all existing formulas, and use the `.add_formulas()` method in the `WorksheetWrapper` class -- or use the `copy_cull_spreadsheet(<...>, formulas=<...>)` function -- to the extent possible for your use case.
+As with any script that uses openpyxl to modify spreadsheets, any formulas that exist in the original spreadsheet will most likely NOT survive the insertion or deletion of rows or columns (or changing of worksheet names, etc.). Thus, it is highly recommended that you flatten all existing formulas, and use the `.add_formulas()` method in the `WorksheetWrapper` class -- or use the `copycull(<...>, formulas=<...>)` function -- to the extent possible for your use case.
 
 Also, you should familiarize yourself with the security warnings that openpyxl gives [on their PyPI page](https://pypi.org/project/openpyxl/).
 

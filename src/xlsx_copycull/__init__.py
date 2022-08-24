@@ -15,7 +15,7 @@ __contact__ = _constants.__email__
 __website__ = _constants.__website__
 
 from .xlsx_copycull import (
-    copy_cull_spreadsheet,
+    copycull,
     add_formulas_to_column,
     WorkbookWrapper,
     WorksheetWrapper
