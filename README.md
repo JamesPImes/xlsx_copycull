@@ -79,7 +79,7 @@ for min_, max_ in split_mins_maxes:
     xlsx_copycull.copy_cull_spreadsheet(
         wb_fp=master_spreadsheet,
         ws_name='Sheet1',
-        match_col_name='Price Per Unit',
+        match_col_name=field_to_check,
         header_row=1,
         delete_condition=delete_condition,
         output_filename=fn,
