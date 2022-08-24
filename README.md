@@ -51,7 +51,6 @@ xlsx_copycull.copycull(
     bool_oper='AND',
     output_filename='new_copy.xlsx',
     copy_to_dir=copy_to_dir)
-)
 ```
 
 NOTE: `bool_oper='AND'` is the default (i.e. delete rows where all of the specified conditions are true).
