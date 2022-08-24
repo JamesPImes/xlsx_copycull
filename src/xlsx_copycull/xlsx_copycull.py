@@ -1,4 +1,4 @@
-# Copyright (c) 2021, James P. Imes. All rights reserved.
+# Copyright (c) 2021-2022, James P. Imes. All rights reserved.
 
 """
 Tools for generating copies of a spreadsheet and culling rows based on
