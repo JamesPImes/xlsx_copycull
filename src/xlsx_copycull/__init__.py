@@ -2,9 +2,9 @@
 
 """
 Tools for generating copies of a spreadsheet and culling rows based on
-some condition (e.g., delete all rows whose cell in Column "A" has a
-value less than 100). Can optionally add Microsoft Excel formulas
-to the remaining rows afterward.
+some condition (e.g., delete all rows whose cell in a certain column has
+a value less than 100). Can optionally add dynamic Microsoft Excel
+formulas afterward.
 """
 
 from . import _constants
