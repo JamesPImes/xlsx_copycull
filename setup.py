@@ -7,7 +7,7 @@ description = "A tool for copying and culling Microsoft Excel spreadsheets"
 long_description = description
 license = 'MIT'
 
-MODULE_DIR = 'xlsx_copycull'
+MODULE_DIR = 'src/xlsx_copycull'
 
 
 def get_constant(constant):
@@ -18,7 +18,7 @@ def get_constant(constant):
         "url": "__website__ = "
     }
     var_setter = setters[constant]
-    with open(Path(rf"src/{MODULE_DIR}/_constants.py"), "r") as file:
+    with open(Path(rf"{MODULE_DIR}/_constants.py"), "r") as file:
         for line in file:
             if line.startswith(var_setter):
                 version = line[len(var_setter):].strip('\'\n \"')
