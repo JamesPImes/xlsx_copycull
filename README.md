@@ -1,7 +1,7 @@
 
 # xlsx_copycull
 
-A tool for streamlined copying Microsoft Excel spreadsheets and deleting only those rows that meet a user-specified condition, based on the value of a given cell in each row.
+A tool for streamlined copying of Microsoft Excel spreadsheets and deleting only those rows that meet a user-specified condition, based on the value of a given cell in each row.
 
 Copyright © 2022, James P. Imes
 
@@ -33,8 +33,6 @@ xlsx_copycull.copy_cull_spreadsheet(
     output_filename='new_copy.xlsx',
     copy_to_dir=copy_to_dir)
 )
-
-
 ```
 
 ## Example 2
@@ -89,6 +87,12 @@ for min_, max_ in split_mins_maxes:
         formulas=formulas_to_add)
     )
 ```
+
+
+## TODO
+
+### # TODO: Basic guide to `WorkbookWrapper` class
+### # TODO: Basic guide to `WorksheetWrapper` class
 
 
 ## Requirements
