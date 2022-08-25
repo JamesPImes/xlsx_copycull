@@ -3,7 +3,9 @@ from setuptools import setup
 from pathlib import Path
 
 
-description = "A tool for copying and culling Microsoft Excel spreadsheets"
+description = (
+    "A tool for copying Microsoft Excel spreadsheets "
+    "and conditionally deleting rows")
 long_description = description
 license = 'MIT'
 
@@ -21,8 +23,8 @@ def get_constant(constant):
     with open(Path(rf"{MODULE_DIR}/_constants.py"), "r") as file:
         for line in file:
             if line.startswith(var_setter):
-                version = line[len(var_setter):].strip('\'\n \"')
-                return version
+                var = line[len(var_setter):].strip('\'\n \"')
+                return var
         raise RuntimeError(f"Could not get {constant} info.")
 
 
@@ -36,5 +38,8 @@ setup(
     author=get_constant("author"),
     author_email=get_constant("author_email"),
     description=description,
-    long_description=long_description
+    long_description=long_description,
+    install_requires=[
+        'openpyxl'
+    ]
 )
