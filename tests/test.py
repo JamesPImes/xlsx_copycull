@@ -3,13 +3,18 @@ import os
 import unittest
 from pathlib import Path
 
-import src.xlsx_copycull as xlsx_copycull
+try:
+    import src.xlsx_copycull as xlsx_copycull
+except ImportError:
+    import sys
+    sys.path.append('../src/xlsx_copycull')
+    import xlsx_copycull
 
 
 class FileHandler:
     """Helper class for unittest.TestCase."""
     master = Path(r"test_data\test_data.xlsx")
-    temp_dir = Path(r"test_temp")
+    temp_dir = Path(r".\test_temp")
     sheet_name = 'Sheet1'
     temp_fn = 'test_temp.xlsx'
     temp_fp = temp_dir / temp_fn
@@ -39,6 +44,7 @@ class FileHandler:
         :param kwargs: Optional kwargs for `.stage_ws()`
         :return: The new WorksheetWrapper.
         """
+        # Pop / discard existing keys and get a new WorksheetWrapper.
         for k in self.temp_wbwrapper.ws_dict.copy().keys():
             self.temp_wbwrapper.ws_dict.pop(k)
         wswr = self.temp_wbwrapper.stage_ws(
@@ -54,12 +60,14 @@ class FileHandler:
         directory.
         :return: None
         """
-        self.temp_wbwrapper.close_wb(save=False)
+        if self.temp_wbwrapper is not None:
+            self.temp_wbwrapper.close_wb(save=False)
         self.temp_wbwrapper = None
-        for fn in os.listdir(self.temp_dir):
-            fp = self.temp_dir / fn
-            fp.unlink()
-        self.temp_dir.rmdir()
+        if self.temp_dir.exists():
+            for fn in os.listdir(self.temp_dir):
+                fp = self.temp_dir / fn
+                fp.unlink()
+            self.temp_dir.rmdir()
 
 
 class UnitTest(unittest.TestCase):
@@ -174,5 +182,6 @@ class UnitTest(unittest.TestCase):
 
 if __name__ == '__main__':
     fh = FileHandler()
+    # Clean up a prior failed test, if it exists.
     fh.clean_up()
     unittest.main()
