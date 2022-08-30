@@ -271,6 +271,18 @@ class WorkbookWrapper:
     def rename_ws(self, old_name, new_name):
         """
         Rename a worksheet. (Workbook must be open.)
+
+        Note that renaming the worksheet will also modify the
+        corresponding ``.ws_dict`` key:
+
+            ```
+            ws_wrapper1 = wb_wrapper.ws_dict['Sheet1']  # OK
+            ws_wrapper1 = wb_wrapper['Sheet1']  # OK
+            wb_wrapper_obj.rename_ws('Sheet1', 'Prices')
+            ws_wrapper1 = wb_wrapper.ws_dict['Prices']  # new sheet name
+            ws_wrapper1 = wb_wrapper['Prices']  # new sheet name
+            ws_wrapper1 = wb_wrapper['Sheet1']  # raises KeyError.
+            ```
         """
         self.mandate_loaded()
         self.ws_dict[old_name].rename_ws(new_name=new_name)
