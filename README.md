@@ -48,7 +48,7 @@ master_spreadsheet = Path(r'C:\Example\master1.xlsx')
 copy_to_dir = master_spreadsheet.parent
 
 # Open and copy the master spreadsheet to 'test_copy.xlsx'.
-wb_wrapper = WorkbookWrapper(
+wb_wrapper = xlsx_copycull.WorkbookWrapper(
     wb_fp=master_spreadsheet,
     output_filename='test_copy.xlsx',
     copy_to_dir=master_spreadsheet.parent)
@@ -82,7 +82,7 @@ master_spreadsheet = Path(r'C:\Example\master1.xlsx')
 copy_to_dir = master_spreadsheet.parent
 
 # Open and copy the master spreadsheet to 'test_copy.xlsx'.
-wb_wrapper = WorkbookWrapper(
+wb_wrapper = xlsx_copycull.WorkbookWrapper(
     wb_fp=master_spreadsheet,
     output_filename='test_copy.xlsx',
     copy_to_dir=master_spreadsheet.parent
