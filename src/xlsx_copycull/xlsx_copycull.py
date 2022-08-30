@@ -270,7 +270,8 @@ class WorkbookWrapper:
 
     def rename_ws(self, old_name, new_name):
         """
-        Rename a worksheet. (Workbook must be open.)
+        Rename a worksheet. (Workbook must be open, and worksheet with
+        `old_name` must already be staged.)
 
         Note that renaming the worksheet will also modify the
         corresponding ``.ws_dict`` key:
