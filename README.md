@@ -13,6 +13,7 @@ Clients and coworkers often use Excel spreadsheets because they're more intuitiv
 
 * [To Install](#install)
 * [Quick Example](#quick_example)
+* [A more in-depth example](examples/generate_report_forms/readme.md)
 * ["How To"](#howto)
   * [Create a copy by initializing a `WorkbookWrapper` object](#copy)
   * [Cull unwanted rows with a `WorksheetWrapper` object](#cull)
@@ -64,6 +65,10 @@ delete_conditions={'Price': lambda x: x <= 1000}
 ws_wrapper1.cull(delete_conditions=delete_conditions)
 wb_wrapper.close_wb(save=True)
 ```
+
+## A more in-depth example
+
+Provided in `examples/generate_report_forms/` is a sample script I wrote to showcase one way that I use this module in my consulting work: splitting up a master review spreadsheet for teammates without programming knowledge to research, fill out, and return.  You can [read about it here](examples/generate_report_forms/readme.md) and [see the script here](examples/generate_report_forms/script/generate_report_forms.py).
 
 
 ## <a name='howto'>"How To"</a>
