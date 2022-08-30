@@ -155,6 +155,22 @@ class UnitTest(unittest.TestCase):
         self.assertFalse(wswp.is_loaded)
         self.clean_up()
 
+    # WBWP methods
+    # test_delete_ws():
+    # test_inform_subordinates():
+    # test_mandate_loaded():
+
+    # WSWP methods
+    # test_populate_protected_rows():
+    # test_cull():
+    # test_add_formulas():
+    # test_find_match_col():
+    # test_modifiable_rows():
+    # test_apply_bool_operator():
+
+    # Misc. functions
+    # test_find_ranges():
+
 
 if __name__ == '__main__':
     fh = FileHandler()
