@@ -26,10 +26,6 @@ class WorkbookWrapper:
     methods of the subordinate WorksheetWrapper objects (which objects
     are stored in the ``.ws_dict`` attribute).
 
-    NOTE: Each method that modifies the workbook or subordinate
-    worksheets will save upon completion by default, unless kwarg
-    `save=False` is passed (where appropriate).
-
     Before modifying any worksheet in the wrapped workbook with the
     added methods, you MUST stage it with the ``.stage_ws()`` method,
     specifying its name, the row containing the header (defaults to 1),
@@ -71,7 +67,7 @@ class WorkbookWrapper:
         be loaded at init.
         (NOTE: ``.wb`` will be set to ``None`` if the file is not
         currently open. Open it with the ``.load_wb()`` method, close it
-        with ``.close_wb()`` (which will save by default), and check
+        with ``.close_wb()`` (which will NOT save by default), and check
         whether it is currently open with the ``.is_loaded`` property.)
 
         :param wb_fp: Filepath to the workbook to load (and copy from).
@@ -199,22 +195,17 @@ class WorkbookWrapper:
         self.new_fp = fp
         return None
 
-    def delete_ws(self, ws_name, save=True):
+    def delete_ws(self, ws_name):
         """
         Delete a worksheet from the workbook. (The worksheet need not be
-        staged.) Will automatically save after unless ``save=False`` is
-        passed.
+        staged.)
         :param ws_name: The name of the worksheet to discard.
-        :param save: Whether to save after this action. (Defaults to
-        ``True``.)
         :return: None
         """
         self.mandate_loaded()
         self.wb.remove(self.wb[ws_name])
         if ws_name in self.ws_dict.keys():
             self.ws_dict.pop(ws_name)
-        if save:
-            self.save_wb()
         return None
 
     def load_wb(self):
@@ -249,12 +240,12 @@ class WorkbookWrapper:
             ws_wrapper.ws = ws
         return None
 
-    def close_wb(self, save=True):
+    def close_wb(self, save=False):
         """
         Close the workbook, and inform the subordinates that they cannot
         be modified until the workbook is reopened with ``.load_wb()``.
-        :param save: Whether to save before closing. (True by default.)
-        :return:
+        :param save: Whether to save before closing. (False by default.)
+        :return: None
         """
         if not self.is_loaded:
             return None
@@ -277,18 +268,12 @@ class WorkbookWrapper:
             raise RuntimeError("Workbook is not currently open")
         return None
 
-    def rename_ws(self, old_name, new_name, save=True):
+    def rename_ws(self, old_name, new_name):
         """
-        Rename a worksheet. Will open the workbook (then re-close it) if
-        not already open.
+        Rename a worksheet. (Workbook must be open.)
         """
-        close_after = False
-        if not self.is_loaded:
-            self.load_wb()
-            close_after = True
-        self.ws_dict[old_name].rename_ws(new_name=new_name, save=save)
-        if close_after:
-            self.close_wb(save=save)
+        self.mandate_loaded()
+        self.ws_dict[old_name].rename_ws(new_name=new_name)
         return None
 
 
@@ -367,12 +352,11 @@ class WorksheetWrapper:
         protected_rows.add(header_row)  # Never delete the header.
         return protected_rows
 
-    def rename_ws(self, new_name, save=True):
+    def rename_ws(self, new_name):
         """
         Rename this worksheet.
 
         :param new_name: The new name for this sheet.
-        :param save: Whether to save after completion (defaults to True)
         :return: None
         """
         self.mandate_loaded()
@@ -382,16 +366,13 @@ class WorksheetWrapper:
         # Update the parent WBWrapper with the new sheet name, and
         # discard the old name.
         self.wb_wrapper.ws_dict[new_name] = self.wb_wrapper.ws_dict.pop(old_name)
-        if save:
-            self.save()
         return None
 
     def cull(
             self,
             delete_conditions: dict,
             bool_oper='AND',
-            protected_rows=None,
-            save=True):
+            protected_rows=None):
         """
         Cull the spreadsheet, based on the ``delete_conditions``.  If
         more than one delete_condition is used, specify whether to apply
@@ -436,8 +417,6 @@ class WorksheetWrapper:
         will pull from what is set in ``.protected_rows``.  (See
         comments above regarding ``.protected_rows`` and
         ``.last_protected_rows``.)
-
-        :param save: Whether to save after completion (defaults to True)
 
         :return: None
         """
@@ -498,9 +477,6 @@ class WorksheetWrapper:
         if store_protected_rows:
             self.protected_rows = new_protected_rows
 
-        if save:
-            self.save()
-
         return None
 
     def find_match_col(self, header_row, match_col_name):
@@ -543,7 +519,7 @@ class WorksheetWrapper:
         ]
         return row_nums
 
-    def add_formulas(self, formulas, rows=None, protected_rows=None, save=True):
+    def add_formulas(self, formulas, rows=None, protected_rows=None):
         """
         Add formulas to the working spreadsheet in `self.ws`.
 
@@ -578,24 +554,17 @@ class WorksheetWrapper:
         initialized. See comments under ``.cull()`` for a more complete
         discussion.
 
-        :param save: Whether to save after completion (defaults to True)
-
         :return: None
         """
         self.mandate_loaded()
         if formulas is None:
             return None
-
         if rows is None:
             rows = self.modifiable_rows(protected_rows=protected_rows)
-
         for column, formula in formulas.items():
             add_formulas_to_column(
                 ws=self.ws, column=column, rows=rows, formula=formula)
-
         self.last_protected_rows = protected_rows
-        if save:
-            self.save()
         return None
 
     @staticmethod
