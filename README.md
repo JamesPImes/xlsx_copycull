@@ -17,6 +17,7 @@ Clients and coworkers often use Excel spreadsheets because they're more intuitiv
   * [Create a copy by initializing a `WorkbookWrapper` object](#copy)
   * [Cull unwanted rows with a `WorksheetWrapper` object](#cull)
   * [Subscripting by sheet name](#subscripting)
+  * [Access openpyxl objects with `.wb` and `.ws`](#openpyxl_objects)
   * [Add formulas to sheets](#formulas)
   * [Protect certain rows from modification or deletion](protected_rows)
   * [Save and close](#save_close)
@@ -134,6 +135,22 @@ wb_wrapper.stage_ws(ws_name='Sheet1', header_row=2)
 ws_wrapper1 = wb_wrapper['Sheet1']
 ```
 
+### <a name='openpyxl_objects'>Access openpyxl objects with `.wb` and `.ws`</a>
+
+Once a `WorkbookWrapper` object has been created, access the underlying openpyxl `Workbook` object with its `.wb` attribute:
+
+```
+wb_wrapper.wb  # an openpyxl Workbook object.
+```
+
+Similarly, once a `WorksheetWrapper` object is staged, we can access the underlying openpyxl `Worksheet` object with its `.ws` attribute.
+
+```
+ws_wrapper1.ws  # an openpyxl Worksheet object.
+```
+
+*__Warning:__* When a `WorkbookWrapper` object is closed, its `.wb` attribute is set to `None`; and the `.ws` attribute in each subordinate `WorksheetWrapper` object is also set to `None`.  If it's reopened with `wb_wrapper.load_wb()`, it will initialize *__new__* `Workbook` and `Worksheet` objects at `.wb` and `.ws` respectively.
+
 ### <a name='formulas'>Add formulas to sheets</a>
 
 Prepare a dict to generate Excel formulas. Specifically, the dict should be keyed by column letter (`'A'`, `'Z'`, `'AA'`, whatever), and each value should be a function (lambda or otherwise) that generates a formula for each row.
@@ -210,7 +227,7 @@ ws_wrapper2.ws  # also `None`
 wb_wrapper.close_wb(save=True)
 ```
 
-We can reopen the copied spreadsheet with `wb_wrapper.open()`, which will repopulate those `.wb` and `.ws` attributes with new openpyxl `Workbook` and `Worksheet` objects.
+We can [reopen the copied spreadsheet](#reopen) with `wb_wrapper.load_wb()`, which will repopulate those `.wb` and `.ws` attributes with new openpyxl `Workbook` and `Worksheet` objects.
 
 
 ### <a name='bool_oper'>Boolean operators `'OR'`, `'AND'`, `'XOR'`</a>
@@ -245,7 +262,7 @@ It is currently not possible to mix and match bool operators in a single pass (e
 
 ### <a name='reopen'>Reopen a closed ``WorkbookWrapper`` object</a>
 
-We can reopen the copied spreadsheet with `wb_wrapper.open()`, which will repopulate those `.wb` and `.ws` attributes with new openpyxl `Workbook` and `Worksheet` objects.
+We can reopen the copied spreadsheet with `wb_wrapper.load_wb()`, which will repopulate those `.wb` and `.ws` attributes with new openpyxl `Workbook` and `Worksheet` objects.
 
 
 ## <a name='warnings'>Warnings</a>
