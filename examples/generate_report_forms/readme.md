@@ -8,11 +8,11 @@ I wrote this as a showcase of the module, for a use case that is similar to one 
 
 Accounting has a spreadsheet of expense reports, showing the 'Price Per Item', the 'Quantity Ordered', and the 'Team Code' (i.e. a unique number for which team made the purchase). They want to check whether each team lead has provided documentation for every purchase, and they want to divvy up that research amongst a handful of accountants.  And to simplify things, accounting doesn't want to bother with any purchase that cost less than $10/item.
 
-Before running the script, a master spreadsheet (`original\purchase_data.xlsx`) was prepared with all the data in it, with review columns having been added.
+Before running the script, a master spreadsheet (`original\purchase_data.xlsx`) was prepared with all the data in it, and review columns were added (the ones with an orange header). And a couple example rows were added for the reviewers' reference.
 
-This script is then run to generate a separate copy of the master spreadsheet for each team (into `reports\Team <##> Expense Verification Report.xlsx`), leaving only the rows relevant to that team, and deleting any purchases that cost at least $10/item.
+This script is then run to generate a separate copy of the master spreadsheet for each team (into `reports\Team <##> Expense Verification Report.xlsx`), leaving only the rows relevant to that team, and deleting any purchases that cost at least $10/item. It also adds formulas under 'Total Order Price' to multiply the 'Price Per Item' by the 'Quantity Ordered'.
 
-Then, the manager can assign out individual spreadsheets to their team of accountants to fill in and return, after tracking down whatever documentation they need to find.
+Now the manager can assign out individual spreadsheets to their team of accountants to fill in and return, after tracking down whatever documentation they need to find.
 
 
 ## Screenshots
