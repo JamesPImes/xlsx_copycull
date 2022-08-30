@@ -83,17 +83,29 @@ class UnitTest(unittest.TestCase):
         return self.FH.clean_up()
 
     def test_new_wbwrapper(self):
+        """
+        Creation of new WorkbookWrapper (and copying of master).
+        """
         wb = self.new_copy()
         self.assertTrue(self.temp_fp.exists())
         self.assertTrue(wb.is_loaded)
         self.clean_up()
 
     def test_new_wswrapper(self):
+        """
+        Creation of new WorksheetWrapper.
+        """
         self.new_copy()
         wswr = self.reload_wswrapper()
         self.clean_up()
 
     def test_rename(self):
+        """
+        Test the various methods of renaming a worksheet, and test that
+        the ``.ws_dict`` in the WorkbookWrapper object has changed the
+        key accordingly.
+        :return:
+        """
         test_name = 'temp'
         wbwp = self.new_copy()
         # Test with wbwp.rename_ws()
@@ -102,6 +114,10 @@ class UnitTest(unittest.TestCase):
         wswp = wbwp[test_name]
         self.assertTrue(wswp.ws.title == test_name)
         self.assertFalse(wswp.ws.title == self.sheet_name)
+        # Test subscripting old and new sheetnames.
+        wswp = wbwp[test_name]
+        with self.assertRaises(KeyError):
+            wbwp[self.sheet_name]
         self.clean_up()
 
         # Test at stage_ws().
@@ -109,6 +125,10 @@ class UnitTest(unittest.TestCase):
         wswp = self.reload_wswrapper(rename_ws=test_name)
         self.assertTrue(wswp.ws.title == test_name)
         self.assertFalse(wswp.ws.title == self.sheet_name)
+        # Test subscripting old and new sheetnames.
+        wswp = wbwp[test_name]
+        with self.assertRaises(KeyError):
+            wbwp[self.sheet_name]
         self.clean_up()
 
         # Test after init.
@@ -117,10 +137,8 @@ class UnitTest(unittest.TestCase):
         wswp.rename_ws(test_name)
         self.assertTrue(wswp.ws.title == test_name)
         self.assertFalse(wswp.ws.title == self.sheet_name)
-
-        # Test subscript new name.
+        # Test subscripting old and new sheetnames.
         wswp = wbwp[test_name]
-        # Test subscript old name.
         with self.assertRaises(KeyError):
             wbwp[self.sheet_name]
         self.clean_up()
