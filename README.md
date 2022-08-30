@@ -9,7 +9,24 @@ A tool for streamlined copying of Microsoft Excel spreadsheets and deleting only
 Clients and coworkers often use Excel spreadsheets because they're more intuitive than proper databases. So large spreadsheets commonly need to be broken down into a series of smaller spreadsheets, with each copy retaining only a subset of the original rows, and without destroying the original spreadsheet. I wrote this module (building on [openpyxl](https://pypi.org/project/openpyxl/), obviously) to iteratively copy the original 'master' spreadsheet and delete the unnecessary rows in each copy, and then to add back in any necessary Excel formulas in each remaining row.
 
 
-## To install
+## Table of Contents
+
+* [To Install](#install)
+* [Quick Example](#example)
+* ["How To"](#howto)
+  * [Create a copy by initializing a `WorkbookWrapper` object](#copy)
+  * [Cull unwanted rows with a `WorksheetWrapper` object](#cull)
+  * [Subscripting by sheet name](#subscripting)
+  * [Add formulas to sheets](#formulas)
+  * [Protect certain rows from modification or deletion](protected_rows)
+  * [Save and close](#save_close)
+  * [Boolean operators `'OR'`, `'AND'`, `'XOR'`](#bool_oper)
+  * [Reopen a closed ``WorkbookWrapper`` object](#reopen)
+* [Warnings](#warnings)
+* [Requirements](#requirements)
+
+
+## <a name='install'>To install</a>
 
 ```
 pip install git+https://github.com/JamesPImes/xlsx_copycull@master
@@ -18,29 +35,9 @@ pip install git+https://github.com/JamesPImes/xlsx_copycull@master
 (I'll put it up on PyPI when I iron out a few kinks. Feel free to give me feedback in the meantime!)
 
 
-## How to use
+## <a name='quick_example'>Quick Example</a>
 
-Basically, we prepare a dict whose keys specify which column headers to look under, and each of whose values is a function to apply to the corresponding cell value in each row, to determine whether to delete that row. Like so:
-
-```
-delete_conditions = {
-    'Price': lambda cell_val: cell_val <= 1000,
-    'Color': lambda cell_val: cell_val not in ('blue', 'red')
-    }
-```
-
-*The function need not be a lambda -- it can be any function that takes a single argument (a given cell's value) and returns a bool or bool-like value.*
-
-We can pass this dict to the simplified `xlsx_copycull.copycull()` function (with other required arguments) -- see [Example 1](#example1) and [Example 2](#example2) below.
-
-Or we can [use it with `WorkbookWrapper` and `WorksheetWrapper` objects](#wbws) if we need to cull rows in multiple sheets within the workbook, or do other tasks with the underlying `Workbook` or `Worksheet` objects.
-
-
-### <a name="example1">Example 1</a> - `copycull()`
-
-Copy a spreadsheet only a single time, and retain only those rows whose `'Price'` value is greater than 1000 *__and__* whose `'Color'` value is `'blue'` or `'red'`. Save the copy to the same directory as the original spreadsheet.
-
-Note: This spreadsheet contains headers in the first row (`header_row=1`), among which are `'Price'` and `'Color'`.
+Create a copy of `master1.xlsx`; and in that copy, delete all rows in `'Sheet1'` that have a `'Price'` value of `1000` or less (i.e. a *"delete condition"* for `'Price'` where `x <= 1000`).
 
 ```
 from pathlib import Path
@@ -49,171 +46,157 @@ import xlsx_copycull
 master_spreadsheet = Path(r'C:\Example\master1.xlsx')
 copy_to_dir = master_spreadsheet.parent
 
-delete_conditions = {
-    'Price': lambda cell_val: cell_val <= 1000,
-    'Color': lambda cell_val: cell_val not in ('blue', 'red')
-    }
-
-xlsx_copycull.copycull(
+# Open and copy the master spreadsheet to 'test_copy.xlsx'.
+wb_wrapper = WorkbookWrapper(
     wb_fp=master_spreadsheet,
+    output_filename='test_copy.xlsx',
+    copy_to_dir=master_spreadsheet.parent)
+
+# We'll modify existing 'Sheet1'.
+ws_wrapper1 = wb_wrapper.stage_ws(
     ws_name='Sheet1',
-    header_row=1,
-    delete_conditions=delete_conditions,
-    bool_oper='AND',
-    output_filename='new_copy.xlsx',
-    copy_to_dir=copy_to_dir
-)
+    header_row=2)
+
+# We'll delete rows with a 'Price' value of 1000 or less.
+delete_conditions={'Price': lambda x: x <= 1000}
+
+ws_wrapper1.cull(delete_conditions=delete_conditions)
+wb_wrapper.close_wb(save=True)
 ```
 
-NOTE: `bool_oper='AND'` is the default (i.e. delete rows where all of the specified conditions are true).
 
-If we wanted to delete rows where the `'Price'` was less than or equal to 1000, *__or__* where `'Color'` was neither `'blue'` nor `'red'`, then we could pass `bool_oper='OR'`.
+## <a name='howto'>"How To"</a>
 
-`bool_oper='XOR'` is also supported.
-
-It is currently not possible to mix and match bool operators in a single pass (e.g., to delete row where conditions A and B are True, or condition C is True).
+Below is a series of guides for the main functionality of this module.
 
 
-### <a name="example2">Example 2</a> - generate multiple copies with `copycull()` and add Excel formulas
-
-We have a spreadsheet that shows data on various products, including `'Price Per Unit'` (ranging from $1 to $300 per unit). We want to split this spreadsheet up into separate spreadsheets for $1 to $100, $100 to $200, and $200 to $300.
-
-We also want to make sure that under Column C, each row contains a formula that adds that same row's values in Columns D and F and divides by the value in cell `A1` (i.e. the formula in cell `C2` should be `=(D2+F2)/$A$1`, cell `C3` should be `=(D3+F3)/$A$1`, etc.)
+### <a name='copy'>Create a copy by initializing a `WorkbookWrapper` object</a>
+Create a `WorkbookWrapper` object from the master spreadsheet, which will automatically create a copy at the specified directory and filename -- and the original spreadsheet will never again be touched by this object or any subordinate objects.
 
 ```
 from pathlib import Path
 import xlsx_copycull
 
-master_spreadsheet = Path(r'C:\Example\master2.xlsx')
+master_spreadsheet = Path(r'C:\Example\master1.xlsx')
+copy_to_dir = master_spreadsheet.parent
 
-# This dict is keyed by column letter, and the value is a constructor
-# for the appropriate Excel formula.
-formulas_to_add = {
-    "C": lambda row_num: "=(D{0}+F{0})/$A$1".format(row_num)
-}
-
-# We'll split up our spreadsheet into these ranges -- i.e. one spreadsheet 
-# for $1/unit to $100/unit; another for $100/unit to $200/unit; etc.
-split_mins_maxes = [(1, 100), (100, 200), (200, 300)]
-
-for min_, max_ in split_mins_maxes:
-    
-    # The new filename of each copy.
-    new_fn = f"example (ppu {min_} - {max_}).xlsx"
-    
-    # Directory where we'll save each copy.
-    copy_to_dir = master_spreadsheet.parent / 'splits'
-    
-    # We'll delete all rows where 'Price Per Unit' is outside the min and 
-    # max. (Checks the value under the 'Price Per Unit' column against the 
-    # lambda function.)
-    delete_conditions = {
-        'Price Per Unit': lambda cell_val: (cell_val <= min_ or cell_val > max_)
-        }
-    
-    # Copy the spreadsheet, delete those rows in 'Sheet1' whose value
-    # in 'Price Per Unit' meets the delete_condition, and then write
-    # the formulas in the remaining cells in Column C. 
-    xlsx_copycull.copycull(
-        wb_fp=master_spreadsheet,
-        ws_name='Sheet1',
-        header_row=1,
-        delete_conditions=delete_conditions,
-        output_filename=fn,
-        copy_to_dir=copy_to_dir,
-        formulas=formulas_to_add
-    )
-```
-
-### <a name="wbws">Have more control with `WorkbookWrapper` and `WorksheetWrapper` objects</a>
-
-Creating a `WorkbookWrapper` object automatically copies the master spreadsheet and opens the copy. The original spreadsheet is never touched after the `WorkbookWrapper` is created.
-
-```
-from pathlib import Path
-from xlsx_copycull import WorkbookWrapper, WorksheetWrapper
-
-master_spreadsheet = Path(r"C:\Example\master3.xlsx")
-
+# Open and copy the master spreadsheet to 'test_copy.xlsx'.
 wb_wrapper = WorkbookWrapper(
     wb_fp=master_spreadsheet,
     output_filename='test_copy.xlsx',
     copy_to_dir=master_spreadsheet.parent
 )
-
-wb_wrapper.wb  # openpyxl Workbook object of the copied workbook.
 ```
 
-Populate a `WorksheetWrapper` for each existing sheet we want to modify.
+### <a name='cull'>Cull unwanted rows with a `WorksheetWrapper` object</a>
+
+After creating the `WorkbookWrapper` object, stage a `WorksheetWrapper` object with `.stage_ws()`. In this example, we'll set up the pre-existing `'Sheet1'` for modification. (Note that this particular spreadsheet has its headers in the second row.)
 
 ```
-# Continuing the above codeblock...
-
 ws_wrapper1 = wb_wrapper.stage_ws(
     ws_name='Sheet1',
-    header_row=2
-)
-ws_wrapper2 = wb_wrapper.stage_ws(
-    ws_name='Sheet2',
-    header_row=3
-)
-
-ws_wrapper1.ws  # openpyxl Worksheet object of 'Sheet1' in the copied workbook
-ws_wrapper2.ws  # openpyxl Worksheet object of 'Sheet2' in the copied workbook
+    header_row=2)
 ```
 
-Once staged, we can access the `WorksheetWrapper` objects by subscripting by sheet name if we need to:
+Then, prepare a dict whose keys specify which column headers to look under, and each of whose values is a function to apply to the corresponding cell value in each row, to determine whether to delete that row.
 
 ```
-ws_wrapper1 = wb_wrapper['Sheet1']
-ws_wrapper2 = wb_wrapper['Sheet2']
-```
-
-Now we can cull each sheet by specifying the appropriate `delete_conditions`.  Each time `.cull()` is called, the copied workbook will save unless you specify `.cull(<...>, save=False)`.
-
-```
-del_condits = {
-    'Price': lambda cell_val: cell_val < 1000,
+delete_conditions = {
+    'Price': lambda cell_val: cell_val <= 1000,
     'Color': lambda cell_val: cell_val not in ('blue', 'red')
 }
+```
 
+*The function need not be a lambda -- it can be any function that takes a single argument (a given cell's value) and returns a bool or bool-like value.*
+
+
+Finally, we can pass this dict to `.cull()` to determine what rows get deleted in `'Sheet1'`:
+
+```
+# Delete the rows in 'Sheet1', specifically wherever EITHER condition
+# is True, by using `bool_oper='OR'`.
+# (Or use `bool_oper='AND' to require ALL conditions be True.)
 ws_wrapper1.cull(
-    delete_conditions=del_condits,
+    delete_conditions=del_condititions,
     bool_oper='OR'
 )
 
-ws_wrapper2.cull(
-    delete_conditions=del_condits,
-    bool_oper='AND'
-}
+# Save and close.
+wb_wrapper.close_wb(save=True)
 ```
 
-We can also add formulas to the sheets. (This will also save the copied workbook unless we specify `save=False`.)
+### <a name='subscripting'>Subscripting by sheet name</a>
 
-By default, will apply to all unprotected rows**.  But we can also choose to write formulas to only certain rows with `rows=<list of ints>`.
+Once staged, we can access the `WorksheetWrapper` objects by subscripting on the `WorkbookWrapper` object by sheet name if we need to:
 
-** *(All rows below the header are unprotected by default, unless specified otherwise by the user when staging or initializing the worksheet -- reference the docstrings for `WorkbookWrapper.stage_ws` and `WorksheetWrapper.__init__` if you need this functionality).*
+```
+wb_wrapper.stage_ws(ws_name='Sheet1', header_row=2)
+ws_wrapper1 = wb_wrapper['Sheet1']
+```
+
+### <a name='formulas'>Add formulas to sheets</a>
+
+Prepare a dict to generate Excel formulas. Specifically, the dict should be keyed by column letter (`'A'`, `'Z'`, `'AA'`, whatever), and each value should be a function (lambda or otherwise) that generates a formula for each row.
+
+In the following example, we'll write the formula `=(C3+D3)/$A$1` to cell `B3`; `=(C4+D4)/$A$1` to cell `B4` etc. And we'll write the formula `=F1+F2` to cell `E3`; `=F2+F3` to cell `E4`; etc.
 
 ```
 formulas_to_add = {
-    "B": lambda row_num: "=(C{0}+D{0})/$A$1".format(row_num),
-    "E": lambda row_num: "=F{0}+F{1}".format(row_num - 2, row_num - 1)
+    "B": lambda row_num: f"=(C{row_num}+D{row_num})/$A$1",
+    "E": lambda row_num: f"=F{row_num - 2}+F{row_num - 1}"
 }
 
 ws_wrapper1.add_formulas(formulas=formulas_to_add)
+```
 
-# For 'Sheet2', write formulas only in rows number 2 to 100.
-rows_for_formulas = list(range(2,101))
+By default, the `.add_formulas()` method will apply to all unprotected rows (*[see here](#protected_rows) for how to protect certain rows from deletion or modification*).  But we can also choose to write formulas to only certain rows with `rows=<list of ints>`.
 
+```
+# For 'Sheet2', write the same formulas as above, but only in
+# rows 2 through 100.
 ws_wrapper2.add_formulas(
     formulas=formulas_to_add,
-    rows=rows_for_formulas
+    rows=range(2,101)
 )
 ```
+(Note that `rows=` can take any list-like object that contains ints.)
 
-Close the `WorkbookWrapper` object when we're done. (Closing will also save unless `save=False` is passed.)
+
+### <a name="protected_rows">Protect certain rows from modification or deletion</a>
+
+When initially staging a worksheet with `.stage_ws()`, we can protect certain rows from deletion with `protected_rows=<iterable of ints>`.
 
 ```
+do_not_modify = [6, 7, 9] + list(range(14, 20))
+
+ws_wrapper4 = wb_wrapper.stage_ws(
+    ws_name='Sheet4',
+    header_row=3,
+    protected_rows=do_not_modify
+)
+
+# Rows 6, 7, 9, and 14 through 19 will not be deleted.
+ws_wrapper4.cull(...)
+
+# Those same rows will not have formulas added.
+ws_wrapper4.add_formulas(...)
+```
+
+Note that the deletion of rows will trigger the automatic re-indexing of protected rows to ensure the same rows are maintained. Access the current indexing of rows that may not be modified in the `.protected_rows` attribute.
+
+Note also: If `protected_rows=` is NOT specified when initializing the `WorksheetWrapper` object (most likely via `wb_wrapper.stage_ws(...)`), then the protected rows will be all rows from the first through the header row (i.e. the first __unprotected__ row will be the row immediately following the headers).
+
+Warning: `.protected_rows` will be protected from modification or deletion ONLY by methods within this module. Those rows may be modified directly, or by openpyxl itself, by other Python modules, etc.
+
+Moreover, only the `.cull()` method will automatically reindex `.protected_rows`. If inserting or deleting rows directly with the openpyxl `Worksheet` object, you may need to manually adjust `.protected_rows` accordingly.
+
+
+### <a name='save_close'>Save and close</a>
+
+Save and close the `WorkbookWrapper` object when we're done.
+
+```
+wb_wrapper.save_wb()
 wb_wrapper.close_wb()
 
 wb_wrapper.wb  # has now been set to `None`
@@ -221,16 +204,59 @@ ws_wrapper1.ws  # also `None`
 ws_wrapper2.ws  # also `None`
 ```
 
+...or simply:
+
+```
+wb_wrapper.close_wb(save=True)
+```
+
 We can reopen the copied spreadsheet with `wb_wrapper.open()`, which will repopulate those `.wb` and `.ws` attributes with new openpyxl `Workbook` and `Worksheet` objects.
 
 
-## Warnings
+### <a name='bool_oper'>Boolean operators `'OR'`, `'AND'`, `'XOR'`</a>
+
+In the `.cull()` method, `bool_oper='AND'` is the default (i.e. delete rows where ALL of the specified conditions are true).
+
+If we wanted to delete rows where ANY condition is true (e.g., where `'Price'` was less than or equal to 1000, *__or__* where `'Color'` was neither `'blue'` nor `'red'`), then we could pass `bool_oper='OR'`.
+
+`bool_oper='XOR'` is also supported.
+
+```
+delete_conditions = {
+    'Price': lambda cell_val: cell_val <= 1000,
+    'Color': lambda cell_val: cell_val not in ('blue', 'red')
+    }
+
+# Default functionality.
+ws_wrapper1.cull(
+    delete_conditions=delete_conditions,
+    bool_oper='AND')
+
+ws_wrapper2.cull(
+    delete_conditions=delete_conditions,
+    bool_oper='OR')
+
+ws_wrapper3.cull(
+    delete_conditions=delete_conditions,
+    bool_oper='XOR')
+```
+
+It is currently not possible to mix and match bool operators in a single pass (e.g., to delete row where conditions A and B are True, or condition C is True).
+
+### <a name='reopen'>Reopen a closed ``WorkbookWrapper`` object</a>
+
+We can reopen the copied spreadsheet with `wb_wrapper.open()`, which will repopulate those `.wb` and `.ws` attributes with new openpyxl `Workbook` and `Worksheet` objects.
+
+
+## <a name='warnings'>Warnings</a>
 
 As with any script that uses openpyxl to modify spreadsheets, any formulas that exist in the original spreadsheet will most likely NOT survive the insertion or deletion of rows or columns (or changing of worksheet names, etc.). Thus, it is highly recommended that you flatten all existing formulas, and use the `.add_formulas()` method in the `WorksheetWrapper` class -- or use the `copycull(<...>, formulas=<...>)` function -- to the extent possible for your use case.
 
 Also, you should familiarize yourself with the security warnings that openpyxl gives [on their PyPI page](https://pypi.org/project/openpyxl/).
 
 
-## Requirements
+## <a name='requirements'>Requirements</a>
 
-Python 3.6+
+* Python 3.6+
+
+* openpyxl
