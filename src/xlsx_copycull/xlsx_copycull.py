@@ -348,13 +348,15 @@ class WorksheetWrapper:
         return None
 
     def _populate_protected_rows(
-            self, explicitly_protected, first_modifiable_row):
+            self, explicitly_protected, first_modifiable_row=None):
         """
         INTERNAL USE:
 
         Lock down which rows may never be deleted.
         """
         header_row = self.header_row
+        if first_modifiable_row is None:
+            first_modifiable_row = self.first_modifiable_row
         if first_modifiable_row <= 0:
             first_modifiable_row = header_row + 1
 
@@ -441,8 +443,7 @@ class WorksheetWrapper:
 
         store_protected_rows = False
         if protected_rows is not None:
-            protected_rows = self._populate_protected_rows(
-                protected_rows, self.first_modifiable_row)
+            protected_rows = self._populate_protected_rows(protected_rows)
         else:
             protected_rows = self.protected_rows
             store_protected_rows = True
@@ -576,6 +577,8 @@ class WorksheetWrapper:
         self.mandate_loaded()
         if formulas is None:
             return None
+        if protected_rows is not None:
+            protected_rows = self._populate_protected_rows(protected_rows)
         if rows is None:
             rows = self.modifiable_rows(protected_rows=protected_rows)
         for column, formula in formulas.items():
