@@ -3,6 +3,9 @@ import os
 import unittest
 from pathlib import Path
 
+from openpyxl import Workbook
+from openpyxl.worksheet.worksheet import Worksheet
+
 try:
     import src.xlsx_copycull as xlsx_copycull
 except ImportError:
@@ -173,7 +176,27 @@ class UnitTest(unittest.TestCase):
         with self.assertRaises(KeyError):
             wbwp[self.sheet_name]
 
-    # test_inform_subordinates():
+    def test_inform_subordinates(self):
+        """
+        Test WorkbookWrapper._inform_subordinates()
+        :return:
+        """
+        wbwp = self.new_copy()
+        wswp = self.reload_wswrapper()
+        # Manually set worksheet to None to specifically test
+        # _inform_subordinates().
+        wswp.ws = None
+        wbwp._inform_subordinates()
+        self.assertTrue(isinstance(wswp.ws, Worksheet))
+        # Manually set worksheet to an actual value.
+        ws_holder = wswp.ws
+        wbwp.close_wb(save=False)
+        self.assertTrue(wswp.ws is None)
+        wswp.ws = ws_holder
+        # This should reset all worksheets to None.
+        wbwp._inform_subordinates()
+        self.assertTrue(wswp.ws is None)
+
     # test_mandate_loaded():
 
     # WSWP methods
