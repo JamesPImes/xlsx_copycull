@@ -197,7 +197,11 @@ class UnitTest(unittest.TestCase):
         wbwp._inform_subordinates()
         self.assertTrue(wswp.ws is None)
 
-    # test_mandate_loaded():
+    def test_mandate_loaded(self):
+        wbwp = self.new_copy()
+        wbwp.close_wb()
+        with self.assertRaises(RuntimeError):
+            wbwp.mandate_loaded()
 
     # WSWP methods
     # test_populate_protected_rows():
