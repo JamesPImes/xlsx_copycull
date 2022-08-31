@@ -159,7 +159,20 @@ class UnitTest(unittest.TestCase):
         self.assertFalse(wswp.is_loaded)
 
     # WBWP methods
-    # test_delete_ws():
+    def test_delete_ws(self):
+        # Test without staging.
+        wbwp = self.new_copy()
+        wbwp.delete_ws(self.sheet_name)
+        self.assertTrue(len(wbwp.wb.sheetnames) == 0)
+
+        # Test after staging.
+        wbwp = self.new_copy()
+        self.reload_wswrapper()
+        wbwp.delete_ws(self.sheet_name)
+        self.assertTrue(len(wbwp.wb.sheetnames) == 0)
+        with self.assertRaises(KeyError):
+            wbwp[self.sheet_name]
+
     # test_inform_subordinates():
     # test_mandate_loaded():
 
