@@ -28,6 +28,7 @@ class FileHandler:
         Get a fresh copy.
         :return: The new WorkbookWrapper.
         """
+        self.clean_up()
         self.temp_dir.mkdir(exist_ok=True)
         self.temp_wbwrapper = xlsx_copycull.WorkbookWrapper(
             wb_fp=self.master,
@@ -97,7 +98,6 @@ class UnitTest(unittest.TestCase):
         wb = self.new_copy()
         self.assertTrue(self.temp_fp.exists())
         self.assertTrue(wb.is_loaded)
-        self.clean_up()
 
     def test_new_wswrapper(self):
         """
@@ -105,7 +105,6 @@ class UnitTest(unittest.TestCase):
         """
         self.new_copy()
         wswr = self.reload_wswrapper()
-        self.clean_up()
 
     def test_rename(self):
         """
@@ -126,7 +125,6 @@ class UnitTest(unittest.TestCase):
         wswp = wbwp[test_name]
         with self.assertRaises(KeyError):
             wbwp[self.sheet_name]
-        self.clean_up()
 
         # Test at stage_ws().
         self.new_copy()
@@ -137,7 +135,6 @@ class UnitTest(unittest.TestCase):
         wswp = wbwp[test_name]
         with self.assertRaises(KeyError):
             wbwp[self.sheet_name]
-        self.clean_up()
 
         # Test after init.
         self.new_copy()
@@ -149,7 +146,6 @@ class UnitTest(unittest.TestCase):
         wswp = wbwp[test_name]
         with self.assertRaises(KeyError):
             wbwp[self.sheet_name]
-        self.clean_up()
 
     def test_is_loaded(self):
         # Test while open (assert True).
@@ -161,7 +157,6 @@ class UnitTest(unittest.TestCase):
         wbwp.close_wb(save=False)
         self.assertFalse(wbwp.is_loaded)
         self.assertFalse(wswp.is_loaded)
-        self.clean_up()
 
     # WBWP methods
     # test_delete_ws():
@@ -185,3 +180,4 @@ if __name__ == '__main__':
     # Clean up a prior failed test, if it exists.
     fh.clean_up()
     unittest.main()
+    fh.clean_up()
