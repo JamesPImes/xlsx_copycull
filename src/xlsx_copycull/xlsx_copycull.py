@@ -323,6 +323,7 @@ class WorksheetWrapper:
         if wb_wrapper.is_loaded:
             self.ws = wb_wrapper.wb[ws_name]
         self.header_row = header_row
+        self.first_modifiable_row = first_modifiable_row
         self.protected_rows = self._populate_protected_rows(
             protected_rows, first_modifiable_row)
         self.last_protected_rows = self.protected_rows
@@ -439,7 +440,10 @@ class WorksheetWrapper:
             return None
 
         store_protected_rows = False
-        if protected_rows is None:
+        if protected_rows is not None:
+            protected_rows = self._populate_protected_rows(
+                protected_rows, self.first_modifiable_row)
+        else:
             protected_rows = self.protected_rows
             store_protected_rows = True
 
@@ -455,7 +459,7 @@ class WorksheetWrapper:
             # Convert to a set and add it to the list.
             to_delete = (
                 j for j in range(1, ws.max_row + 1)
-                if (j not in self.protected_rows
+                if (j not in protected_rows
                     and delete_condition(ws.cell(row=j, column=match_col).value)
                     )
             )
