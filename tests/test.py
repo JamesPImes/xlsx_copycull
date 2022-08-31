@@ -204,7 +204,52 @@ class UnitTest(unittest.TestCase):
             wbwp.mandate_loaded()
 
     # WSWP methods
-    # test_populate_protected_rows():
+    def test_populate_protected_rows(self):
+
+        def compare_test_vals(vals, ws):
+            # Compare the remaining row vals against the originally
+            # collected `vals`.
+            remaining_vals = [
+                ws[f"A{row_num}"].value for row_num in range(2, ws.max_row + 1)
+            ]
+            self.assertTrue(vals == remaining_vals)
+            return None
+
+        def confirm_no_fomulas(ws):
+            # Confirm that no formulas were added to any protected rows.
+            for row_num in range(2, ws.max_row + 1):
+                self.assertTrue(ws[f"F{row_num}"].value is None)
+
+        wbwp = self.new_copy()
+        wswp = self.reload_wswrapper()
+
+        # Collect the values in protected rows to ensure they stay the
+        # same after culling.
+        ws = wswp.ws
+        protected_rows = [2, 4, 6]
+        test_vals = []
+        for row_num in protected_rows:
+            val = ws.cell(row=row_num, column=1).value
+            test_vals.append(val)
+
+        # Delete every unprotected row.
+        delete_all = {'a': lambda _: True}
+
+        # Protect rows at `.cull()`.
+        wswp.cull(delete_conditions=delete_all, protected_rows=protected_rows)
+        compare_test_vals(test_vals, wswp.ws)
+
+        # Protect rows at init.
+        wbwp = self.new_copy()
+        wswp = self.reload_wswrapper(protected_rows=protected_rows)
+        # Delete all unprotected rows.
+        wswp.cull(delete_conditions=delete_all)
+        compare_test_vals(test_vals, wswp.ws)
+
+        # Check formulas.
+        wswp.add_formulas(formulas={'F': lambda _: '=1+2'})
+        confirm_no_fomulas(wswp.ws)
+
     # test_cull():
     # test_add_formulas():
     # test_find_match_col():
