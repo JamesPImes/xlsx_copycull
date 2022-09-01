@@ -289,7 +289,15 @@ class UnitTest(unittest.TestCase):
         wswp = self.reload_wswrapper()
         self.assertTrue(wswp.modifiable_rows(protected_rows=[2, 4, 6]) == [3, 5])
 
-    # test_apply_bool_operator():
+    def test_apply_bool_operator(self):
+        both_sets = [{1, 2, 3}, {3, 4, 5}]
+        wswp_class = xlsx_copycull.WorksheetWrapper
+        self.assertTrue(
+            wswp_class._apply_bool_operator(both_sets, 'AND') == {3})
+        self.assertTrue(
+            wswp_class._apply_bool_operator(both_sets, 'OR') == {1, 2, 3, 4, 5})
+        self.assertTrue(
+            wswp_class._apply_bool_operator(both_sets, 'XOR') == {1, 2, 4, 5})
 
     # Misc. functions
     # test_find_ranges():
