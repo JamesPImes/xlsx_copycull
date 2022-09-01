@@ -270,7 +270,14 @@ class UnitTest(unittest.TestCase):
         self.assertTrue(wswp.ws['F3'].value == '=C3+D3')
         self.assertTrue(wswp.ws['F5'].value == '=C5+D5')
 
-    # test_find_match_col():
+    def test_find_match_col(self):
+        wbwp = self.new_copy()
+        wswp = self.reload_wswrapper()
+        col_num = wswp.find_match_col(header_row=1, match_col_name='c')
+        self.assertTrue(col_num == 3)
+        with self.assertRaises(RuntimeError):
+            wswp.find_match_col(header_row=1, match_col_name="Nope!")
+
     # test_modifiable_rows():
     # test_apply_bool_operator():
 
