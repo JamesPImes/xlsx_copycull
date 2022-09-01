@@ -1,6 +1,7 @@
 
 import os
 import unittest
+import random
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -8,10 +9,12 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 try:
     import src.xlsx_copycull as xlsx_copycull
+    from src.xlsx_copycull import find_ranges
 except ImportError:
     import sys
     sys.path.append('../src/xlsx_copycull')
     import xlsx_copycull
+    from xlsx_copycull import find_ranges
 
 
 class FileHandler:
@@ -262,13 +265,49 @@ class UnitTest(unittest.TestCase):
         for row_num in range(2, wswp.ws.max_row + 1):
             self.assertTrue(wswp.ws.cell(row=row_num, column=1).value >= 10)
 
-    # test_add_formulas():
-    # test_find_match_col():
-    # test_modifiable_rows():
-    # test_apply_bool_operator():
+    def test_add_formulas(self):
+        """Test .add_formulas method."""
+        wbwp = self.new_copy()
+        wswp = self.reload_wswrapper()
+        wswp.add_formulas(formulas={"F": lambda row_num: f"=C{row_num}+D{row_num}"})
+        self.assertTrue(wswp.ws['F3'].value == '=C3+D3')
+        self.assertTrue(wswp.ws['F5'].value == '=C5+D5')
+
+    def test_find_match_col(self):
+        wbwp = self.new_copy()
+        wswp = self.reload_wswrapper()
+        col_num = wswp.find_match_col(header_row=1, match_col_name='c')
+        self.assertTrue(col_num == 3)
+        with self.assertRaises(RuntimeError):
+            wswp.find_match_col(header_row=1, match_col_name="Nope!")
+
+    def test_modifiable_rows(self):
+        wbwp = self.new_copy()
+        wswp = self.reload_wswrapper(protected_rows=[2, 4, 6])
+        self.assertTrue(wswp.modifiable_rows() == [3, 5])
+
+        wswp = self.reload_wswrapper()
+        self.assertTrue(wswp.modifiable_rows() == [2, 3, 4, 5, 6])
+
+        wswp = self.reload_wswrapper()
+        self.assertTrue(wswp.modifiable_rows(protected_rows=[2, 4, 6]) == [3, 5])
+
+    def test_apply_bool_operator(self):
+        both_sets = [{1, 2, 3}, {3, 4, 5}]
+        wswp_class = xlsx_copycull.WorksheetWrapper
+        self.assertTrue(
+            wswp_class._apply_bool_operator(both_sets, 'AND') == {3})
+        self.assertTrue(
+            wswp_class._apply_bool_operator(both_sets, 'OR') == {1, 2, 3, 4, 5})
+        self.assertTrue(
+            wswp_class._apply_bool_operator(both_sets, 'XOR') == {1, 2, 4, 5})
 
     # Misc. functions
-    # test_find_ranges():
+    def test_find_ranges(self):
+        nums = [-3, -2, -1, 0, 1, 2, 3, 5, 6, 7, 8, 9, 18, 19, 20, 22]
+        random.shuffle(nums)
+        rges = find_ranges(nums)
+        self.assertTrue(rges == [(-3, 3), (5, 9), (18, 20), (22, 22)])
 
 
 if __name__ == '__main__':
