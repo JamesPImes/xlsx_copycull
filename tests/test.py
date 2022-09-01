@@ -262,7 +262,14 @@ class UnitTest(unittest.TestCase):
         for row_num in range(2, wswp.ws.max_row + 1):
             self.assertTrue(wswp.ws.cell(row=row_num, column=1).value >= 10)
 
-    # test_add_formulas():
+    def test_add_formulas(self):
+        """Test .add_formulas method."""
+        wbwp = self.new_copy()
+        wswp = self.reload_wswrapper()
+        wswp.add_formulas(formulas={"F": lambda row_num: f"=C{row_num}+D{row_num}"})
+        self.assertTrue(wswp.ws['F3'].value == '=C3+D3')
+        self.assertTrue(wswp.ws['F5'].value == '=C5+D5')
+
     # test_find_match_col():
     # test_modifiable_rows():
     # test_apply_bool_operator():
