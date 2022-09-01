@@ -205,6 +205,10 @@ class UnitTest(unittest.TestCase):
 
     # WSWP methods
     def test_populate_protected_rows(self):
+        """
+        Test protected_rows parameter.
+        :return:
+        """
 
         def compare_test_vals(vals, ws):
             # Compare the remaining row vals against the originally
@@ -250,7 +254,14 @@ class UnitTest(unittest.TestCase):
         wswp.add_formulas(formulas={'F': lambda _: '=1+2'})
         confirm_no_fomulas(wswp.ws)
 
-    # test_cull():
+    def test_cull(self):
+        """Test .cull() method."""
+        wbwp = self.new_copy()
+        wswp = self.reload_wswrapper()
+        wswp.cull(delete_conditions={'a': lambda x: x < 10})
+        for row_num in range(2, wswp.ws.max_row + 1):
+            self.assertTrue(wswp.ws.cell(row=row_num, column=1).value >= 10)
+
     # test_add_formulas():
     # test_find_match_col():
     # test_modifiable_rows():
