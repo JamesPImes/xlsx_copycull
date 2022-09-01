@@ -125,8 +125,8 @@ class UnitTest(unittest.TestCase):
         wswp = wbwp.stage_ws(self.sheet_name)
         wbwp.rename_ws(self.sheet_name, test_name)
         wswp = wbwp[test_name]
-        self.assertTrue(wswp.ws.title == test_name)
-        self.assertFalse(wswp.ws.title == self.sheet_name)
+        self.assertEqual(wswp.ws.title, test_name)
+        self.assertNotEqual(wswp.ws.title, self.sheet_name)
         # Test subscripting old and new sheetnames.
         wswp = wbwp[test_name]
         with self.assertRaises(KeyError):
@@ -135,8 +135,8 @@ class UnitTest(unittest.TestCase):
         # Test at stage_ws().
         self.new_copy()
         wswp = self.reload_wswrapper(rename_ws=test_name)
-        self.assertTrue(wswp.ws.title == test_name)
-        self.assertFalse(wswp.ws.title == self.sheet_name)
+        self.assertEqual(wswp.ws.title, test_name)
+        self.assertNotEqual(wswp.ws.title, self.sheet_name)
         # Test subscripting old and new sheetnames.
         wswp = wbwp[test_name]
         with self.assertRaises(KeyError):
@@ -146,8 +146,8 @@ class UnitTest(unittest.TestCase):
         self.new_copy()
         wswp = self.reload_wswrapper()
         wswp.rename_ws(test_name)
-        self.assertTrue(wswp.ws.title == test_name)
-        self.assertFalse(wswp.ws.title == self.sheet_name)
+        self.assertEqual(wswp.ws.title, test_name)
+        self.assertNotEqual(wswp.ws.title, self.sheet_name)
         # Test subscripting old and new sheetnames.
         wswp = wbwp[test_name]
         with self.assertRaises(KeyError):
@@ -169,13 +169,13 @@ class UnitTest(unittest.TestCase):
         # Test without staging.
         wbwp = self.new_copy()
         wbwp.delete_ws(self.sheet_name)
-        self.assertTrue(len(wbwp.wb.sheetnames) == 0)
+        self.assertEqual(len(wbwp.wb.sheetnames), 0)
 
         # Test after staging.
         wbwp = self.new_copy()
         self.reload_wswrapper()
         wbwp.delete_ws(self.sheet_name)
-        self.assertTrue(len(wbwp.wb.sheetnames) == 0)
+        self.assertEqual(len(wbwp.wb.sheetnames), 0)
         with self.assertRaises(KeyError):
             wbwp[self.sheet_name]
 
@@ -219,7 +219,7 @@ class UnitTest(unittest.TestCase):
             remaining_vals = [
                 ws[f"A{row_num}"].value for row_num in range(2, ws.max_row + 1)
             ]
-            self.assertTrue(vals == remaining_vals)
+            self.assertEqual(vals, remaining_vals)
             return None
 
         def confirm_no_fomulas(ws):
@@ -270,44 +270,44 @@ class UnitTest(unittest.TestCase):
         wbwp = self.new_copy()
         wswp = self.reload_wswrapper()
         wswp.add_formulas(formulas={"F": lambda row_num: f"=C{row_num}+D{row_num}"})
-        self.assertTrue(wswp.ws['F3'].value == '=C3+D3')
-        self.assertTrue(wswp.ws['F5'].value == '=C5+D5')
+        self.assertEqual(wswp.ws['F3'].value, '=C3+D3')
+        self.assertEqual(wswp.ws['F5'].value, '=C5+D5')
 
     def test_find_match_col(self):
         wbwp = self.new_copy()
         wswp = self.reload_wswrapper()
         col_num = wswp.find_match_col(header_row=1, match_col_name='c')
-        self.assertTrue(col_num == 3)
+        self.assertEqual(col_num, 3)
         with self.assertRaises(RuntimeError):
             wswp.find_match_col(header_row=1, match_col_name="Nope!")
 
     def test_modifiable_rows(self):
         wbwp = self.new_copy()
         wswp = self.reload_wswrapper(protected_rows=[2, 4, 6])
-        self.assertTrue(wswp.modifiable_rows() == [3, 5])
+        self.assertEqual(wswp.modifiable_rows(), [3, 5])
 
         wswp = self.reload_wswrapper()
-        self.assertTrue(wswp.modifiable_rows() == [2, 3, 4, 5, 6])
+        self.assertEqual(wswp.modifiable_rows(), [2, 3, 4, 5, 6])
 
         wswp = self.reload_wswrapper()
-        self.assertTrue(wswp.modifiable_rows(protected_rows=[2, 4, 6]) == [3, 5])
+        self.assertEqual(wswp.modifiable_rows(protected_rows=[2, 4, 6]), [3, 5])
 
     def test_apply_bool_operator(self):
         both_sets = [{1, 2, 3}, {3, 4, 5}]
         wswp_class = xlsx_copycull.WorksheetWrapper
-        self.assertTrue(
-            wswp_class._apply_bool_operator(both_sets, 'AND') == {3})
-        self.assertTrue(
-            wswp_class._apply_bool_operator(both_sets, 'OR') == {1, 2, 3, 4, 5})
-        self.assertTrue(
-            wswp_class._apply_bool_operator(both_sets, 'XOR') == {1, 2, 4, 5})
+        self.assertEqual(
+            wswp_class._apply_bool_operator(both_sets, 'AND'), {3})
+        self.assertEqual(
+            wswp_class._apply_bool_operator(both_sets, 'OR'), {1, 2, 3, 4, 5})
+        self.assertEqual(
+            wswp_class._apply_bool_operator(both_sets, 'XOR'), {1, 2, 4, 5})
 
     # Misc. functions
     def test_find_ranges(self):
         nums = [-3, -2, -1, 0, 1, 2, 3, 5, 6, 7, 8, 9, 18, 19, 20, 22]
         random.shuffle(nums)
         rges = find_ranges(nums)
-        self.assertTrue(rges == [(-3, 3), (5, 9), (18, 20), (22, 22)])
+        self.assertEqual(rges, [(-3, 3), (5, 9), (18, 20), (22, 22)])
 
 
 if __name__ == '__main__':
