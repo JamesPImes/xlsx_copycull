@@ -13,7 +13,7 @@ Clients and coworkers often use Excel spreadsheets because they're more intuitiv
 
 * [To Install](#install)
 * [Quick Example](#quick_example)
-* [A more in-depth example](examples/generate_report_forms/readme.md)
+* [A more in-depth example](examples/generate_report_forms)
 * ["How To"](#howto)
   * [Create a copy by initializing a `WorkbookWrapper` object](#copy)
   * [Cull unwanted rows with a `WorksheetWrapper` object](#cull)
