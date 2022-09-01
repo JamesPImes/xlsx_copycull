@@ -531,6 +531,7 @@ class WorksheetWrapper:
             protected_rows = self.protected_rows
         if protected_rows is None:
             protected_rows = set()
+        protected_rows = self._populate_protected_rows(protected_rows)
         row_nums = [
             j for j in range(1, self.ws.max_row + 1)
             if j not in protected_rows

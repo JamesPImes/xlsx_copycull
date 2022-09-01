@@ -278,7 +278,17 @@ class UnitTest(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             wswp.find_match_col(header_row=1, match_col_name="Nope!")
 
-    # test_modifiable_rows():
+    def test_modifiable_rows(self):
+        wbwp = self.new_copy()
+        wswp = self.reload_wswrapper(protected_rows=[2, 4, 6])
+        self.assertTrue(wswp.modifiable_rows() == [3, 5])
+
+        wswp = self.reload_wswrapper()
+        self.assertTrue(wswp.modifiable_rows() == [2, 3, 4, 5, 6])
+
+        wswp = self.reload_wswrapper()
+        self.assertTrue(wswp.modifiable_rows(protected_rows=[2, 4, 6]) == [3, 5])
+
     # test_apply_bool_operator():
 
     # Misc. functions
