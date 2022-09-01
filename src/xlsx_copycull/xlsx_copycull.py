@@ -599,10 +599,12 @@ class WorksheetWrapper:
         'AND', 'OR', or 'XOR'.
         :return: A set of the resulting elements.
         """
+        list_of_sets = list_of_sets.copy()
         operator = operator.upper()
         final = set()
         if list_of_sets:
             final = list_of_sets.pop()
+            final = final.copy()
         if operator == 'OR':
             for new_set in list_of_sets:
                 final.update(new_set)
