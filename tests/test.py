@@ -1,7 +1,6 @@
 
 import os
 import unittest
-import random
 from pathlib import Path
 
 from openpyxl import Workbook
@@ -9,12 +8,10 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 try:
     import src.xlsx_copycull as xlsx_copycull
-    from src.xlsx_copycull import find_ranges
 except ImportError:
     import sys
     sys.path.append('../src/xlsx_copycull')
     import xlsx_copycull
-    from xlsx_copycull import find_ranges
 
 
 class FileHandler:
@@ -303,12 +300,7 @@ class UnitTest(unittest.TestCase):
             wswp_class._apply_bool_operator(both_sets, 'XOR') == {1, 2, 4, 5})
 
     # Misc. functions
-    def test_find_ranges(self):
-        nums = [-3, -2, -1, 0, 1, 2, 3, 5, 6, 7, 8, 9, 18, 19, 20, 22]
-        random.shuffle(nums)
-        rges = find_ranges(nums)
-        self.assertTrue(rges == [(-3, 3), (5, 9), (18, 20), (22, 22)])
-
+    # test_find_ranges():
 
 
 if __name__ == '__main__':
