@@ -64,7 +64,12 @@ class WorkbookWrapper:
       the extent possible for your use case.
     """
 
-    def __init__(self, orig_fp: Path, copy_fp: Path, uid=None):
+    def __init__(
+            self,
+            orig_fp: Path,
+            copy_fp: Path = None,
+            uid=None,
+            no_copy=False):
         """
         A wrapper for an openpyxl Workbook object. Access the Workbook
         object directly in the ``.wb`` attribute.  The Workbook will
@@ -83,19 +88,36 @@ class WorkbookWrapper:
         :param copy_fp: Filepath at which to save the copied workbook.
          The filename should end in ``'.xlsx'`` or ``'.xlsm'``.
         :param uid: (Optional) An internal unique identifier.
+        :param no_copy: Use this to modify the original spreadsheet,
+         without copying. By default, the original spreadsheet will be
+         copied to the filepath at ``copy_fp`` (i.e. ``no_copy=False``).
+
+          .. warning::
+            Using ``no_copy`` will irrevocably modify the original
+            spreadsheet.
         """
         self.uid = uid
         self.orig_fp = Path(orig_fp)
-        self.copy_fp = Path(copy_fp)
-        if self.orig_fp == self.copy_fp:
-            raise ValueError("Cannot copy to same filepath as source.")
+        if no_copy:
+            self.copy_fp = self.orig_fp
+        elif self.orig_fp == self.copy_fp:
+            raise ValueError(
+                "Cannot copy source to its same filepath."
+                "Use `no_copy=True` to modify the original file.")
+        elif copy_fp is None:
+            raise ValueError(
+                "specify `copy_fp=<path>` to create a copy, "
+                "or use `no_copy=True` to modify the original file.")
+        else:
+            self.copy_fp = Path(copy_fp)
+            self.copy_original()
+
         # a dict of subordinate WorksheetWrapper objects
         self.ws_dict = {}
         # The openpyxl workbook -- will be set to None whenever the wb
         # is NOT currently open.  (Check if this is currently set with
         # the property `self.is_loaded`)
         self.wb = None
-        self.copy_original()
 
     @property
     def is_loaded(self):
@@ -107,7 +129,7 @@ class WorkbookWrapper:
             return self.ws_dict[item]
         except KeyError:
             raise KeyError(
-                f"worksheet '{item}' has not yet been staged (or "
+                f"worksheet {item!r} has not yet been staged (or "
                 f"does not exist in this workbook). "
                 f"Must first call `.stage_ws()`")
 
@@ -247,33 +269,39 @@ class WorkbookWrapper:
             ws_wrapper.ws = ws
         return None
 
-    def close_wb(self, save=False) -> None:
+    def close_wb(self) -> None:
         """
         Close the workbook, and inform the subordinates that they cannot
         be modified until the workbook is reopened with ``.load_wb()``.
-        :param save: Whether to save before closing. (``False`` by
-         default.)
         :return: None
         """
         if not self.is_loaded:
             return None
-        if save:
-            self.save_wb()
         self.wb.close()
         self.wb = None
         # Update all of the staged worksheets.
         self._inform_subordinates()
         return None
 
-    def save_wb(self):
+    def save_wb(self, fp=None) -> None:
+        """
+        Save the ``.xlsx`` or ``.xlsm`` file.
+        :param fp: The filepath at which to save the workbook. If not
+         specified here, will save to the path currently configured in
+         the ``.copy_fp`` attribute.
+        :return: None
+        """
         self.mandate_loaded()
-        self.wb.save(self.copy_fp)
+        if fp is None:
+            fp = self.copy_fp
+        self.wb.save(fp)
         return None
 
     def mandate_loaded(self):
         """Raise an error if the ``.wb`` is not currently loaded."""
         if not self.is_loaded:
-            raise RuntimeError("Workbook is not currently open. Use ``.load_wb()`` method.")
+            raise RuntimeError(
+                "Workbook is not currently open. Use the `.load_wb()` method.")
         return None
 
     def rename_ws(self, old_name, new_name):
