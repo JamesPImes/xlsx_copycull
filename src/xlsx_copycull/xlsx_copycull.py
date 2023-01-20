@@ -54,7 +54,7 @@ class WorkbookWrapper:
     (Remember, though, that worksheets must first be staged with
     ``.stage_ws()``, or this would raise a ``KeyError``.)
 
-    ..warning::
+    .. warning::
       As with any script that uses openpyxl to modify spreadsheets, any
       formulas that exist in the original spreadsheet will most likely
       NOT survive the insertion or deletion of rows or columns (or
@@ -75,7 +75,7 @@ class WorkbookWrapper:
         object directly in the ``.wb`` attribute.  The Workbook will
         be loaded at init.
 
-        ..note::
+        .. note::
 
           ``.wb`` will be set to ``None`` if the file is not currently
           open. Open it with the ``.load_wb()`` method, close it with
@@ -157,7 +157,7 @@ class WorkbookWrapper:
          worksheet. Defaults to ``None``, in which case, it will not be
          renamed.
 
-          ..warning::
+          .. warning::
             If the worksheet is renamed, the new name will be the key
             for this worksheet, and NOT the original worksheet name.
 
@@ -238,7 +238,7 @@ class WorkbookWrapper:
          documentation on ``openpyxl.load_workbook()`` for optional
          parameters.
 
-         ..warning::
+         .. warning::
            This functionality is not strictly supported by the
            ``xlsx_copycull`` module. You may run into unexpected
            behavior or errors.
@@ -378,15 +378,6 @@ class WorksheetWrapper:
             raise RuntimeError("Workbook is not currently open")
         return None
 
-    def load(self):
-        self.wb_wrapper.load_wb()
-        return None
-
-    def save(self):
-        self.mandate_loaded()
-        self.wb_wrapper.save_wb()
-        return None
-
     def _populate_protected_rows(
             self, explicitly_protected, first_modifiable_row=None) -> set:
         """
@@ -424,11 +415,7 @@ class WorksheetWrapper:
         self.wb_wrapper.ws_dict[new_name] = self.wb_wrapper.ws_dict.pop(old_name)
         return None
 
-    def cull(
-            self,
-            select_conditions: dict,
-            bool_oper='AND',
-            protected_rows=None):
+    def cull(self, select_conditions: dict, bool_oper='AND', protected_rows=None):
         """
         Cull the spreadsheet, based on the ``select_conditions``.  If
         more than one select condition is used (i.e. more than one key
@@ -740,7 +727,7 @@ def copycull(
          documentation on ``openpyxl.load_workbook()`` for optional
          parameters.
 
-         ..warning::
+         .. warning::
            This functionality is not strictly supported by the
            ``xlsx_copycull`` module. You may run into unexpected
            behavior or errors.
