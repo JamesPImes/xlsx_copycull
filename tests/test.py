@@ -37,7 +37,7 @@ class FileHandler:
         self.clean_up()
         self.temp_dir.mkdir(exist_ok=True)
         self.temp_wbwrapper = xlsx_copycull.WorkbookWrapper(
-            wb_fp=self.master,
+            orig_fp=self.master,
             output_filename=self.temp_fn,
             copy_to_dir=self.temp_dir
         )
@@ -240,17 +240,17 @@ class UnitTest(unittest.TestCase):
             test_vals.append(val)
 
         # Delete every unprotected row.
-        delete_all = {'a': lambda _: True}
+        delete_all = {'a': lambda _: False}
 
         # Protect rows at `.cull()`.
-        wswp.cull(delete_conditions=delete_all, protected_rows=protected_rows)
+        wswp.cull(select_conditions=delete_all, protected_rows=protected_rows)
         compare_test_vals(test_vals, wswp.ws)
 
         # Protect rows at init.
         wbwp = self.new_copy()
         wswp = self.reload_wswrapper(protected_rows=protected_rows)
         # Delete all unprotected rows.
-        wswp.cull(delete_conditions=delete_all)
+        wswp.cull(select_conditions=delete_all)
         compare_test_vals(test_vals, wswp.ws)
 
         # Check formulas.
@@ -261,7 +261,7 @@ class UnitTest(unittest.TestCase):
         """Test .cull() method."""
         wbwp = self.new_copy()
         wswp = self.reload_wswrapper()
-        wswp.cull(delete_conditions={'a': lambda x: x < 10})
+        wswp.cull(select_conditions={'a': lambda x: x >= 10})
         for row_num in range(2, wswp.ws.max_row + 1):
             self.assertTrue(wswp.ws.cell(row=row_num, column=1).value >= 10)
 
