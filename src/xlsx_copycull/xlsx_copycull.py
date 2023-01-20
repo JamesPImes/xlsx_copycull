@@ -64,12 +64,7 @@ class WorkbookWrapper:
       the extent possible for your use case.
     """
 
-    def __init__(
-            self,
-            wb_fp: Path,
-            output_filename: str,
-            copy_to_dir: Path = None,
-            uid=None):
+    def __init__(self, orig_fp: Path, copy_fp: Path, uid=None):
         """
         A wrapper for an openpyxl Workbook object. Access the Workbook
         object directly in the ``.wb`` attribute.  The Workbook will
@@ -83,36 +78,24 @@ class WorkbookWrapper:
           whether it is currently open with the ``.is_loaded``
           property.
 
-        :param wb_fp: Filepath to the workbook to load (and copy from).
-         Must be in the .xlsx format!
-        :param output_filename: The filename (NOT the full path) to
-         which to save the copied workbook. Should include the
-         ``'.xlsx'`` suffix.
-        :param copy_to_dir: Directory in which to save the copied
-         workbook. If not specified, will use the same directory as the
-         base spreadsheet.
+        :param orig_fp: Filepath to the workbook to load (and copy from).
+         Must be in the ``.xlsx`` or ``.xlsm`` formats!
+        :param copy_fp: Filepath at which to save the copied workbook.
+         The filename should end in ``'.xlsx'`` or ``'.xlsm'``.
         :param uid: (Optional) An internal unique identifier.
         """
         self.uid = uid
-        self.wb_fp = Path(wb_fp)
+        self.orig_fp = Path(orig_fp)
+        self.copy_fp = Path(copy_fp)
+        if self.orig_fp == self.copy_fp:
+            raise ValueError("Cannot copy to same filepath as source.")
         # a dict of subordinate WorksheetWrapper objects
         self.ws_dict = {}
         # The openpyxl workbook -- will be set to None whenever the wb
         # is NOT currently open.  (Check if this is currently set with
         # the property `self.is_loaded`)
         self.wb = None
-        if copy_to_dir is None:
-            copy_to_dir = self.wb_fp.parent
-        self.copy_to_dir = Path(copy_to_dir)
-        self.output_filename = Path(output_filename)
-        self.new_fp = self.copy_to_dir / self.output_filename
-        if self.wb_fp == self.new_fp:
-            raise ValueError(
-                "Error! The filepath created by combining `copy_to_dir` and "
-                "`output_filename` may not be the same as the filepath to "
-                "`wb_fp`!")
         self.copy_original()
-        self.load_wb()
 
     @property
     def is_loaded(self):
@@ -174,21 +157,25 @@ class WorkbookWrapper:
     def copy_original(self, fp=None, stage_new_fp=False) -> None:
         """
         Copy the source spreadsheet to the new filepath at ``fp``, and
-        store that new filepath to `self.new_fp`. (If ``fp`` is not
+        store that new filepath to ``.copy_fp``. (If ``fp`` is not
         specified here, will default to whatever is already set in
-        ``.new_fp``.)
+        ``.copy_fp``.)
         :param fp: The filepath to copy to.
         :param stage_new_fp: A bool, whether to set the filepath of the
          newly copied workbook as the target workbook of this
          ``WorkbookWrapper`` object. That is, whether the newly copied
-         copied spreadsheet is the one we want to be working on.
-         Defaults to ``False``.
+         spreadsheet is the one we want to be working on. Defaults to
+         ``False``.
 
-         ..note::
-           If the workbook is currently open and ``stage_new_fp=True``
-           is passed, it will raise a ``RuntimeError``. To avoid that
-           error, save and close the workbook first with
-           ``.close_wb()``.
+          .. note::
+            If the workbook is currently open and ``stage_new_fp=True``
+            is passed, it will raise a ``RuntimeError``. To avoid that
+            error, save and close the workbook first:
+
+            .. code-block::
+
+              workbook_wrapper.save_wb()
+              workbook_wrapper.close_wb()
 
         :return: None
         """
@@ -197,11 +184,11 @@ class WorkbookWrapper:
                 "Workbook is currently open. Save and close with "
                 "`.close_wb()` before copying.")
         if fp is None:
-            fp = self.new_fp
+            fp = self.copy_fp
         fp = Path(fp)
         os.makedirs(fp.parent, exist_ok=True)
-        shutil.copy(self.wb_fp, fp)
-        self.new_fp = fp
+        shutil.copy(self.orig_fp, fp)
+        self.copy_fp = fp
         return None
 
     def delete_ws(self, ws_name):
@@ -219,10 +206,11 @@ class WorkbookWrapper:
 
     def load_wb(self, **load_workbook_kwargs):
         """
-        Open the workbook at the filepath stored in `self.new_fp` (and
+        Open the workbook at the filepath stored in ``.copy_fp`` (and
         behind the scenes, inform all subordinate worksheets that they
-        are now open for modification -- by setting their `.ws`
+        are now open for modification -- by setting their ``.ws``
         attributes to the appropriate openpyxl worksheet object.)
+
         :param load_workbook_kwargs: (Optional) Keyword arguments to
          pass through to the ``openpyxl.load_workbook()`` method. See
          documentation on ``openpyxl.load_workbook()`` for optional
@@ -237,7 +225,7 @@ class WorkbookWrapper:
         """
         if self.is_loaded:
             return
-        self.wb = openpyxl.load_workbook(self.new_fp, **load_workbook_kwargs)
+        self.wb = openpyxl.load_workbook(self.copy_fp, **load_workbook_kwargs)
         # Update all of the staged worksheets.
         self._inform_subordinates()
         return None
@@ -279,7 +267,7 @@ class WorkbookWrapper:
 
     def save_wb(self):
         self.mandate_loaded()
-        self.wb.save(self.new_fp)
+        self.wb.save(self.copy_fp)
         return None
 
     def mandate_loaded(self):
@@ -331,7 +319,7 @@ class WorksheetWrapper:
          ``first_modifiable_row`` and the header row will be
          automatically added.
 
-         ..note::
+         .. note::
            ``.protected_rows`` may change behind the scenes if rows are
             deleted by ``.cull()``. If rows are inserted or deleted
             outside the functionality of this module, ``.protected_rows``
@@ -420,7 +408,7 @@ class WorksheetWrapper:
         ``'OR'``, or ``'XOR'`` boolean logic to the resulting sets by
         passing one of those as ``bool_oper`` (defaults to ``'AND'``).
 
-        ..note::
+        .. note::
 
           ``protected_rows`` is a list (or set) of integers, being
           the row numbers for those rows that should NEVER be deleted
@@ -526,7 +514,7 @@ class WorksheetWrapper:
         """
         Find the match column number, based on its header name.
 
-        ..note::
+        .. note::
             Will return the first match, so avoid duplicate header names.
         """
 
@@ -648,13 +636,12 @@ class WorksheetWrapper:
 
 
 def copycull(
-        wb_fp: Path,
+        orig_fp: Path,
+        copy_fp: Path,
         ws_name: str,
         header_row: int,
         select_conditions: dict,
-        output_filename: str,
         bool_oper: str = 'AND',
-        copy_to_dir: Path = None,
         first_modifiable_row: int = -1,
         protected_rows=None,
         rename_ws=None,
@@ -670,10 +657,14 @@ def copycull(
     ``WorkbookWrapper`` and ``WorksheetWrapper`` objects. Returns the
     ``WorkbookWrapper`` object.)
 
-    :param wb_fp: The filepath to the source .xlsx file.
+    :param orig_fp: The filepath to the source ``.xlsx`` or ``.xlsm``
+     file.
 
-    :param ws_name: The name of the worksheet within that workbook to
-     cull.
+    :param copy_fp: Filepath at which to save the copied workbook. The
+     filename should end in ``'.xlsx'`` or ``'.xlsm'``.
+
+    :param ws_name: The name of the worksheet within that copied
+     workbook to cull.
 
     :param header_row: The row containing headers (an int, indexed to 1)
 
@@ -694,13 +685,6 @@ def copycull(
      whether to apply OR, AND, or XOR to the resulting rows to be
      selected.  Pass one of the following:  ``'AND'``, ``'OR'``,
      ``'XOR'``. (Defaults to ``'AND'``.)
-
-    :param output_filename: The filename (NOT the full path) to which to
-     the copied workbook. Should include the '.xlsx' suffix.
-
-    :param copy_to_dir: Directory in which to save the copied workbook.
-     If not specified, will use the same directory as the base
-     spreadsheet.
 
     :param protected_rows: (Optional) A list-like object containing the
      rows that should never be deleted. Rows before ``first_deletable_row``
@@ -733,13 +717,12 @@ def copycull(
            ``xlsx_copycull`` module. You may run into unexpected
            behavior or errors.
 
-    :return: A ``WorkbookWrapper`` object. (Access its ``.new_fp`` for
+    :return: A ``WorkbookWrapper`` object. (Access its ``.copy_fp`` for
      the filepath to the copied spreadsheet.)
     """
 
     # Wrap, copy, and load our workbook
-    wbwp = WorkbookWrapper(
-        wb_fp=wb_fp, output_filename=output_filename, copy_to_dir=copy_to_dir)
+    wbwp = WorkbookWrapper(orig_fp=orig_fp, copy_fp=copy_fp)
     wbwp.load_wb(**load_workbook_kwargs)
     # Stage our worksheet, and grab the resulting WorksheetWrapper obj.
     wswp = wbwp.stage_ws(
@@ -756,7 +739,8 @@ def copycull(
     wswp.add_formulas(formulas=formulas)
 
     # Close and save our workbook.
-    wbwp.close_wb(save=True)
+    wbwp.save_wb()
+    wbwp.close_wb()
 
     # Return the WorkbookWrapper.
     return wbwp

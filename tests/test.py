@@ -38,9 +38,9 @@ class FileHandler:
         self.temp_dir.mkdir(exist_ok=True)
         self.temp_wbwrapper = xlsx_copycull.WorkbookWrapper(
             orig_fp=self.master,
-            output_filename=self.temp_fn,
-            copy_to_dir=self.temp_dir
+            copy_fp=self.temp_fp
         )
+        self.temp_wbwrapper.load_wb()
         return self.temp_wbwrapper
 
     def reload_wswrapper(self, **kwargs):
@@ -121,6 +121,7 @@ class UnitTest(unittest.TestCase):
         """
         test_name = 'temp'
         wbwp = self.new_copy()
+        wbwp.load_wb()
         # Test with wbwp.rename_ws()
         wswp = wbwp.stage_ws(self.sheet_name)
         wbwp.rename_ws(self.sheet_name, test_name)
