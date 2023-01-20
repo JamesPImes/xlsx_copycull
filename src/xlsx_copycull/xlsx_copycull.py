@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2022, James P. Imes. All rights reserved.
+# Copyright (c) 2021-2023, James P. Imes. All rights reserved.
 
 """
 Tools for generating copies of a spreadsheet and culling rows based on
@@ -13,6 +13,14 @@ from pathlib import Path
 import openpyxl
 
 
+__all__ = [
+    'copycull',
+    'add_formulas_to_column',
+    'WorkbookWrapper',
+    'WorksheetWrapper',
+]
+
+
 class WorkbookWrapper:
     """
     A wrapper class for openpyxl workbooks, with added methods for
@@ -23,8 +31,8 @@ class WorkbookWrapper:
     generate a copy to modify.
 
     In particular, look into the ``.cull()`` and ``.add_formulas()``
-    methods of the subordinate WorksheetWrapper objects (which objects
-    are stored in the ``.ws_dict`` attribute).
+    methods of the subordinate ``WorksheetWrapper`` objects (which
+    get stored in the ``.ws_dict`` attribute).
 
     Before modifying any worksheet in the wrapped workbook with the
     added methods, you MUST stage it with the ``.stage_ws()`` method,
@@ -35,7 +43,7 @@ class WorkbookWrapper:
     Access the staged ``WorksheetWrapper`` objects either directly in
     the ``.ws_dict`` attribute (a dict, keyed by sheet name), or by
     subscripting on the ``WorkbookWrapper`` object (passing the sheet
-    name):
+    name)::
 
         ``some_wb_wrapper.ws_dict['Sheet1'].cull(<...>)``
 
@@ -44,15 +52,16 @@ class WorkbookWrapper:
         ``some_wb_wrapper['Sheet1'].cull(<...>)``
 
     (Remember, though, that worksheets must first be staged with
-    ``.stage_ws()``, or this would raise a KeyError.)
+    ``.stage_ws()``, or this would raise a ``KeyError``.)
 
-    WARNING: As with any script that uses openpyxl to modify
-    spreadsheets, any formulas that exist in the original spreadsheet
-    will most likely NOT survive the insertion or deletion of rows or
-    columns (or changing of worksheet names, etc.). Thus, it is highly
-    recommended that you flatten all possible formulas, and use the
-    `.add_formulas()` method in the WorksheetWrapper class to the extent
-    possible for your use case.
+    ..warning::
+      As with any script that uses openpyxl to modify spreadsheets, any
+      formulas that exist in the original spreadsheet will most likely
+      NOT survive the insertion or deletion of rows or columns (or
+      changing of worksheet names, etc.). Thus, it is highly recommended
+      that you flatten all possible formulas, and use the
+      ``.add_formulas()`` method in the ``WorksheetWrapper`` class to
+      the extent possible for your use case.
     """
 
     def __init__(
@@ -65,38 +74,35 @@ class WorkbookWrapper:
         A wrapper for an openpyxl Workbook object. Access the Workbook
         object directly in the ``.wb`` attribute.  The Workbook will
         be loaded at init.
-        (NOTE: ``.wb`` will be set to ``None`` if the file is not
-        currently open. Open it with the ``.load_wb()`` method, close it
-        with ``.close_wb()`` (which will NOT save by default), and check
-        whether it is currently open with the ``.is_loaded`` property.)
+
+        ..note::
+
+          ``.wb`` will be set to ``None`` if the file is not currently
+          open. Open it with the ``.load_wb()`` method, close it with
+          ``.close_wb()`` (which will NOT save by default), and check
+          whether it is currently open with the ``.is_loaded``
+          property.
 
         :param wb_fp: Filepath to the workbook to load (and copy from).
-        Must be in the .xlsx format!
+         Must be in the .xlsx format!
         :param output_filename: The filename (NOT the full path) to
-        which to save the copied workbook. Should include the '.xlsx'
-        suffix.
+         which to save the copied workbook. Should include the
+         ``'.xlsx'`` suffix.
         :param copy_to_dir: Directory in which to save the copied
-        workbook. If not specified, will use the same directory as the
-        base spreadsheet.
+         workbook. If not specified, will use the same directory as the
+         base spreadsheet.
         :param uid: (Optional) An internal unique identifier.
         """
-        # An internal identifier
         self.uid = uid
-
-        # filepath to the original workbook
         self.wb_fp = Path(wb_fp)
-
-        # a dict of subordinate WorksheetWrappers
+        # a dict of subordinate WorksheetWrapper objects
         self.ws_dict = {}
-
         # The openpyxl workbook -- will be set to None whenever the wb
         # is NOT currently open.  (Check if this is currently set with
         # the property `self.is_loaded`)
         self.wb = None
-
         if copy_to_dir is None:
             copy_to_dir = self.wb_fp.parent
-
         self.copy_to_dir = Path(copy_to_dir)
         self.output_filename = Path(output_filename)
         self.new_fp = self.copy_to_dir / self.output_filename
@@ -105,7 +111,6 @@ class WorkbookWrapper:
                 "Error! The filepath created by combining `copy_to_dir` and "
                 "`output_filename` may not be the same as the filepath to "
                 "`wb_fp`!")
-
         self.copy_original()
         self.load_wb()
 
@@ -113,10 +118,8 @@ class WorkbookWrapper:
     def is_loaded(self):
         return self.wb is not None
 
-    # ------------------------------------------------------------------
-    # Subscriptable -- passes through keys to `.ws_dict` dict attribute.
-
     def __getitem__(self, item):
+        # Subscripting passes keys through to `.ws_dict` dict attribute.
         try:
             return self.ws_dict[item]
         except KeyError:
@@ -124,8 +127,6 @@ class WorkbookWrapper:
                 f"worksheet '{item}' has not yet been staged (or "
                 f"does not exist in this workbook). "
                 f"Must first call `.stage_ws()`")
-
-    # ------------------------------------------------------------------
 
     def stage_ws(
             self,
@@ -139,20 +140,25 @@ class WorkbookWrapper:
 
         :param ws_name: The (original) sheet name.
         :param header_row: The row containing headers (an int, indexed
-        to 1)
+         to 1)
         :param first_modifiable_row: (Optional) The first row that may
-        be modified (an int, indexed to 1). If not set, will default to
-        the first row after the `header_row`.
+         be modified (an int, indexed to 1). If not set, will default to
+         the first row after the ``header_row``.
         :param protected_rows: A list-like object containing the rows
-        that should never be deleted. Rows before `first_modifiable_row`
-        and the header row will be automatically added.
+         that should never be deleted. Row numbers before
+         ``first_modifiable_row`` and the header row will be
+         automatically added to the rows that may not be deleted.
         :param rename_ws: (Optional) A string, for how to rename the
-        worksheet. Defaults to None, in which case, it will not be
-        renamed. WARNING: If the worksheet is renamed, the new name will
-        be the key for this worksheet, and NOT the original worksheet
-        name.
-        :return: The WorksheetWrapper object for the newly staged sheet
-        (which is also stored to ``.ws_dict``, keyed by the sheet name).
+         worksheet. Defaults to ``None``, in which case, it will not be
+         renamed.
+
+          ..warning::
+            If the worksheet is renamed, the new name will be the key
+            for this worksheet, and NOT the original worksheet name.
+
+        :return: The ``WorksheetWrapper`` object for the newly staged
+         sheet (which is also stored to ``.ws_dict``, keyed by the sheet
+         name).
         """
         wswp = WorksheetWrapper(
             wb_wrapper=self,
@@ -165,22 +171,25 @@ class WorkbookWrapper:
             self.rename_ws(ws_name, new_name=rename_ws)
         return wswp
 
-    def copy_original(self, fp=None, stage_new_fp=False):
+    def copy_original(self, fp=None, stage_new_fp=False) -> None:
         """
-        Copy the source spreadsheet to the new filepath at `fp`, and
-        store that new filepath to `self.new_fp`. (If `fp` is not
+        Copy the source spreadsheet to the new filepath at ``fp``, and
+        store that new filepath to `self.new_fp`. (If ``fp`` is not
         specified here, will default to whatever is already set in
-        `self.new_fp`.)
+        ``.new_fp``.)
         :param fp: The filepath to copy to.
         :param stage_new_fp: A bool, whether to set the filepath of the
-        newly copied workbook as the target workbook of this
-        WorkbookWrapper object. That is, whether or not the newly copied
-        spreadsheet is the one we want to be working on. Defaults to
-        False.
-        (NOTE: If the workbook is currently open and
-        ``stage_new_fp=True`` is passed, it will raise a RuntimeError.
-        To avoid that error, save and close the workbook first with
-        ``.close_wb()``.)
+         newly copied workbook as the target workbook of this
+         ``WorkbookWrapper`` object. That is, whether the newly copied
+         copied spreadsheet is the one we want to be working on.
+         Defaults to ``False``.
+
+         ..note::
+           If the workbook is currently open and ``stage_new_fp=True``
+           is passed, it will raise a ``RuntimeError``. To avoid that
+           error, save and close the workbook first with
+           ``.close_wb()``.
+
         :return: None
         """
         if self.is_loaded and stage_new_fp:
@@ -208,29 +217,39 @@ class WorkbookWrapper:
             self.ws_dict.pop(ws_name)
         return None
 
-    def load_wb(self):
+    def load_wb(self, **load_workbook_kwargs):
         """
         Open the workbook at the filepath stored in `self.new_fp` (and
         behind the scenes, inform all subordinate worksheets that they
         are now open for modification -- by setting their `.ws`
         attributes to the appropriate openpyxl worksheet object.)
+        :param load_workbook_kwargs: (Optional) Keyword arguments to
+         pass through to the ``openpyxl.load_workbook()`` method. See
+         documentation on ``openpyxl.load_workbook()`` for optional
+         parameters.
+
+         ..warning::
+           This functionality is not strictly supported by the
+           ``xlsx_copycull`` module. You may run into unexpected
+           behavior or errors.
+
         :return: None
         """
         if self.is_loaded:
             return
-        self.wb = openpyxl.load_workbook(self.new_fp)
+        self.wb = openpyxl.load_workbook(self.new_fp, **load_workbook_kwargs)
         # Update all of the staged worksheets.
         self._inform_subordinates()
         return None
 
-    def _inform_subordinates(self):
+    def _inform_subordinates(self) -> None:
         """
         INTERNAL USE:
 
-        Inform the subordinate WorksheetWrapper objects whether the
-        workbook has been opened or closed. If opened, set their `.ws`
+        Inform the subordinate ``WorksheetWrapper`` objects whether the
+        workbook has been opened or closed. If opened, set their ``.ws``
         attributes to their respective openpyxl worksheet.
-        :return:
+        :return: None
         """
         is_loaded = self.is_loaded
         for ws_name, ws_wrapper in self.ws_dict.items():
@@ -240,11 +259,12 @@ class WorkbookWrapper:
             ws_wrapper.ws = ws
         return None
 
-    def close_wb(self, save=False):
+    def close_wb(self, save=False) -> None:
         """
         Close the workbook, and inform the subordinates that they cannot
         be modified until the workbook is reopened with ``.load_wb()``.
-        :param save: Whether to save before closing. (False by default.)
+        :param save: Whether to save before closing. (``False`` by
+         default.)
         :return: None
         """
         if not self.is_loaded:
@@ -265,25 +285,23 @@ class WorkbookWrapper:
     def mandate_loaded(self):
         """Raise an error if the wb is not currently loaded."""
         if not self.is_loaded:
-            raise RuntimeError("Workbook is not currently open")
+            raise RuntimeError("Workbook is not currently open. Use ``.load_wb()`` method.")
         return None
 
     def rename_ws(self, old_name, new_name):
         """
         Rename a worksheet. (Workbook must be open, and worksheet with
-        `old_name` must already be staged.)
+        ``old_name`` must already be staged.)
 
         Note that renaming the worksheet will also modify the
-        corresponding ``.ws_dict`` key:
+        corresponding ``.ws_dict`` key::
 
-            ```
             ws_wrapper1 = wb_wrapper.ws_dict['Sheet1']  # OK
             ws_wrapper1 = wb_wrapper['Sheet1']  # OK
             wb_wrapper_obj.rename_ws('Sheet1', 'Prices')
             ws_wrapper1 = wb_wrapper.ws_dict['Prices']  # new sheet name
             ws_wrapper1 = wb_wrapper['Prices']  # new sheet name
             ws_wrapper1 = wb_wrapper['Sheet1']  # raises KeyError.
-            ```
         """
         self.mandate_loaded()
         self.ws_dict[old_name].rename_ws(new_name=new_name)
@@ -304,18 +322,24 @@ class WorksheetWrapper:
             protected_rows: set = None,
             first_modifiable_row: int = -1):
         """
-        :param wb_wrapper: The parent WorkbookWrapper object.
+        :param wb_wrapper: The parent ``WorkbookWrapper`` object.
         :param ws_name: The name of this worksheet.
         :param header_row: The row containing headers (an int, indexed
-        to 1)
+         to 1)
         :param protected_rows: (Optional) A list-like object containing
-        the rows that should never be modified or deleted. Rows before
-        ``first_modifiable_row`` and the header row will be
-        automatically added. (NOTE: `protected_rows` may change behind
-        the scenes if rows are deleted by ``.cull()``.)
+         the rows that should never be modified or deleted. Rows before
+         ``first_modifiable_row`` and the header row will be
+         automatically added.
+
+         ..note::
+           ``.protected_rows`` may change behind the scenes if rows are
+            deleted by ``.cull()``. If rows are inserted or deleted
+            outside the functionality of this module, ``.protected_rows``
+            may get corrupted.
+
         :param first_modifiable_row: (Optional) The first row that may
-        be modified or deleted (an int, indexed to 1). If not set, will
-        default to the first row after the `header_row`.
+         be modified or deleted (an int, indexed to 1). If not set, will
+         default to the first row after the ``header_row``.
         """
         self.wb_wrapper = wb_wrapper
         self.ws_name = ws_name
@@ -333,7 +357,7 @@ class WorksheetWrapper:
         return self.ws is not None
 
     def mandate_loaded(self):
-        """Raise an error if the wb is not currently loaded."""
+        """Raise an error if the ``.wb`` is not currently loaded."""
         if not self.is_loaded:
             raise RuntimeError("Workbook is not currently open")
         return None
@@ -348,7 +372,7 @@ class WorksheetWrapper:
         return None
 
     def _populate_protected_rows(
-            self, explicitly_protected, first_modifiable_row=None):
+            self, explicitly_protected, first_modifiable_row=None) -> set:
         """
         INTERNAL USE:
 
@@ -368,7 +392,7 @@ class WorksheetWrapper:
         protected_rows.add(header_row)  # Never delete the header.
         return protected_rows
 
-    def rename_ws(self, new_name):
+    def rename_ws(self, new_name) -> None:
         """
         Rename this worksheet.
 
@@ -386,26 +410,29 @@ class WorksheetWrapper:
 
     def cull(
             self,
-            delete_conditions: dict,
+            select_conditions: dict,
             bool_oper='AND',
             protected_rows=None):
         """
-        Cull the spreadsheet, based on the ``delete_conditions``.  If
-        more than one delete_condition is used, specify whether to apply
-        'AND', 'OR', or 'XOR' boolean logic to the resulting sets by
-        passing one of those as ``bool_oper`` (defaults to 'AND').
+        Cull the spreadsheet, based on the ``select_conditions``.  If
+        more than one select condition is used (i.e. more than one key
+        in ``select_conditions``), specify whether to apply ``'AND'``,
+        ``'OR'``, or ``'XOR'`` boolean logic to the resulting sets by
+        passing one of those as ``bool_oper`` (defaults to ``'AND'``).
 
-        NOTE: ``protected_rows`` is a list (or set) of integers, being
-        the row numbers for those rows that should NEVER be deleted
-        (indexed to 1). If rows above those numbers get deleted, the
-        resulting indexes in ``protected_rows`` would not be accurate,
-        so this method adjusts the protected rows to their new position.
-        The resulting row numbers are stored to attribute
-        ``.last_protected_rows``.  IF AND ONLY IF ``protected_rows`` is
-        NOT passed as an arg here, it will be pulled from
-        ``.protected_rows``, and the resulting ``protected_rows`` will
-        ALSO be stored to ``.protected_rows`` (in addition to
-        ``.last_protected_rows``).
+        ..note::
+
+          ``protected_rows`` is a list (or set) of integers, being
+          the row numbers for those rows that should NEVER be deleted
+          (indexed to 1). If rows above those numbers get deleted, the
+          resulting indexes in ``protected_rows`` would not be accurate,
+          so this method adjusts the protected rows to their new
+          position.  The resulting row numbers are stored to attribute
+          ``.last_protected_rows``.  IF AND ONLY IF ``protected_rows``
+          is NOT passed as an arg here, it will be pulled from
+          ``.protected_rows``, and the resulting ``protected_rows`` will
+          ALSO be stored to ``.protected_rows`` (in addition to
+          ``.last_protected_rows``).
 
         (The reason for this design choice was that rows may need to be
         protected for one operation, but not for another -- but we want
@@ -414,31 +441,31 @@ class WorksheetWrapper:
         after calling ``.cull()`` but before calling the next method,
         which might change them.)
 
-        :param delete_conditions: A dict of column_header-to-
-        delete_condition pairs, to determine which rows should be
-        deleted. Specifically, keyed by the header of the column to
-        check under, and whose value is a function to be applied to the
-        value of the cell under that column, which returns a bool. If
-        the function returns True (or a True-like value) when applied to
-        the cell's value, that row will be marked for deletion.
+        :param select_conditions: A dict of column_header-to-
+         select_condition pairs, to determine which rows should be
+         deleted. Specifically, keyed by the header of the column to
+         check under, and whose value is a function to be applied to the
+         value of the cell under that column, which returns a bool. If
+         the function returns ``False`` (or a ``False``-like value) when
+         applied to the cell's value, that row will be marked for
+         deletion.
 
-        :param bool_oper: When using more than one delete conditions
-        (i.e. more than one key in the dict), use this to determine
-        whether to apply OR, AND, or XOR to the resulting rows to be
-        deleted.  Pass one of the following:  'AND', 'OR', 'XOR'.
-        (Defaults to 'AND'.)
+        :param bool_oper: When using more than one select conditions
+         (i.e. more than one key in the dict), use this to determine
+         whether to apply OR, AND, or XOR to the resulting rows to be
+         selected.  Pass one of the following:  'AND', 'OR', 'XOR'.
+         (Defaults to 'AND'.)
 
         :param protected_rows: (Optional) A list-like object containing
-        the rows that should never be deleted. If not specified here,
-        will pull from what is set in ``.protected_rows``.  (See
-        comments above regarding ``.protected_rows`` and
-        ``.last_protected_rows``.)
+         the rows that should never be deleted. If not specified here,
+         will pull from what is set in ``.protected_rows``.  (See
+         comments above regarding ``.protected_rows`` and
+         ``.last_protected_rows``.)
 
         :return: None
         """
         self.mandate_loaded()
-
-        if not delete_conditions:
+        if not select_conditions:
             return None
 
         store_protected_rows = False
@@ -449,19 +476,17 @@ class WorksheetWrapper:
             store_protected_rows = True
 
         header_row = self.header_row
-
         ws = self.ws
         all_to_delete = []
-        # Apply each delete condition to the appropriate column.
-        for field, delete_condition in delete_conditions.items():
+        # Apply each select condition to the appropriate column.
+        for field, select_condition in select_conditions.items():
             match_col = self.find_match_col(header_row, field)
 
-            # Mark for deletion all those rows that match our criteria.
-            # Convert to a set and add it to the list.
+            # Mark for deletion all those rows that do NOT match our criteria.
             to_delete = (
                 j for j in range(1, ws.max_row + 1)
                 if (j not in protected_rows
-                    and delete_condition(ws.cell(row=j, column=match_col).value)
+                    and not select_condition(ws.cell(row=j, column=match_col).value)
                     )
             )
             all_to_delete.append(set(to_delete))
@@ -500,8 +525,9 @@ class WorksheetWrapper:
     def find_match_col(self, header_row, match_col_name):
         """
         Find the match column number, based on its header name.
-        NOTE: Will return the first match, so avoid duplicate header
-        names.
+
+        ..note::
+            Will return the first match, so avoid duplicate header names.
         """
 
         self.mandate_loaded()
@@ -520,11 +546,11 @@ class WorksheetWrapper:
         """
         Get a list of row numbers that currently exist in the
         spreadsheet (indexed to 1), and which are NOT in
-        `protected_rows`.
+        ``protected_rows``.
 
-        :param protected_rows: (Optional) A list-like object containing
-        the rows that should never be deleted. If not specified here,
-        will pull from what is set in ``.protected_rows``.
+        :param protected_rows: (Optional) A collection of row numbers
+         (indexed to 1) that should never be deleted. If not specified
+         here, will pull from what is set in ``.protected_rows``.
         """
         self.mandate_loaded()
         if protected_rows is None:
@@ -540,18 +566,17 @@ class WorksheetWrapper:
 
     def add_formulas(self, formulas, rows=None, protected_rows=None):
         """
-        Add formulas to the working spreadsheet in `self.ws`.
+        Add formulas to the working spreadsheet in ``.ws``.
 
-        :param formulas: A dict keyed by column name (i.e. "E") whose
-        values are a function that generates the formula, based on the
-        row number.
+        :param formulas: A dict keyed by column name (e.g. ``'E'``)
+         whose values are a function that generates the formula, based
+         on the row number.
 
-        For example, to generate these formulas...
+        For example, to generate these formulas...::
 
-            Column R --> =F5*AB5/$S$1  (for an example row 5)
-            Column S --> =AB5*AC5  (for an example row 5)
-
-            ...we would pass this dict:
+            # Column R --> =F5*AB5/$S$1  (for an example row 5)
+            # Column S --> =AB5*AC5  (for an example row 5)
+            # ...we would pass this dict:
 
             formulas = {
                 "R": lambda row_num: "=F{0}*AB{0}/$S$1".format(row_num),
@@ -559,19 +584,19 @@ class WorksheetWrapper:
             }
 
         :param rows: The rows where formulas should be added. If
-        ``rows`` is specified here, it will IGNORE ``protected_rows``
-        (potentially adding formulas to all rows in ``rows``, even if
-        they are also in ``protected_rows``).  However, if ``rows`` is
-        NOT specified, it will insert a formula into every row EXCEPT
-        ``protected_rows``.
+         ``rows`` is specified here, it will IGNORE ``protected_rows``
+         (potentially adding formulas to all rows in ``rows``, even if
+         they are also in ``protected_rows``).  However, if ``rows`` is
+         NOT specified, it will insert a formula into every row EXCEPT
+         ``protected_rows``.
 
         :param protected_rows: (Optional) A list-like object containing
-        the rows that should never be deleted. If not specified here,
-        will pull from what is set in ``.protected_rows``. NOTE: If
-        ``.cull()`` was called before this method, then the
-        ``protected_rows`` may have changed since this object was
-        initialized. See comments under ``.cull()`` for a more complete
-        discussion.
+         the rows that should never be deleted. If not specified here,
+         will pull from what is set in ``.protected_rows``. NOTE: If
+         ``.cull()`` was called before this method, then the
+         ``protected_rows`` may have changed since this object was
+         initialized. See comments under ``.cull()`` for a more complete
+         discussion.
 
         :return: None
         """
@@ -594,9 +619,10 @@ class WorksheetWrapper:
         INTERNAL USE:
         Apply the specified boolean operator to a list of sets.
 
-        :param list_of_sets: A list of sets.
+        :param list_of_sets: A list of sets to which to apply the bool
+         operator.
         :param operator: Which boolean operator to apply -- either
-        'AND', 'OR', or 'XOR'.
+         ``'AND'``, ``'OR'``, or ``'XOR'``.
         :return: A set of the resulting elements.
         """
         list_of_sets = list_of_sets.copy()
@@ -625,80 +651,96 @@ def copycull(
         wb_fp: Path,
         ws_name: str,
         header_row: int,
-        delete_conditions: dict,
+        select_conditions: dict,
         output_filename: str,
         bool_oper: str = 'AND',
         copy_to_dir: Path = None,
         first_modifiable_row: int = -1,
         protected_rows=None,
         rename_ws=None,
-        formulas=None):
+        formulas=None,
+        **load_workbook_kwargs
+):
     """
     Copy a target spreadsheet and cull the copy down to only those rows
-    that do NOT match the ``delete_conditions``.  Optionally add Excel
-    formulas with ``formulas=<dict>`` (see below).
+    that match the ``select_conditions``.  Optionally add Excel formulas
+    with ``formulas=<dict>`` (see below).
 
-    (A function that combines the basic functionality of WorkbookWrapper
-    and WorksheetWrapper objects. Returns the WorkbookWrapper object.)
+    (A function that combines the basic functionality of
+    ``WorkbookWrapper`` and ``WorksheetWrapper`` objects. Returns the
+    ``WorkbookWrapper`` object.)
 
     :param wb_fp: The filepath to the source .xlsx file.
 
     :param ws_name: The name of the worksheet within that workbook to
-    cull.
+     cull.
 
     :param header_row: The row containing headers (an int, indexed to 1)
 
     :param first_modifiable_row: (Optional) The first row that may be
-    deleted (an int, indexed to 1). If not set, will default to the
-    first row after the `header_row`.
+     deleted (an int, indexed to 1). If not set, will default to the
+     first row after the `header_row`.
 
-    :param delete_conditions: A dict of column_header-to-
-    delete_condition pairs, to determine which rows should be deleted.
-    Specifically, keyed by the header of the column to check under, and
-    whose value is a function to be applied to the value of the cell
-    under that column, which returns a bool. If the function returns
-    True (or a True-like value) when applied to the cell's value, that
-    row will be marked for deletion.
+    :param select_conditions: A dict of column_header-to-
+     select_condition pairs, to determine which rows should be kept.
+     Specifically, keyed by the header of the column to check under, and
+     whose value is a function to be applied to the value of the cell
+     under that column, which returns a bool. If the function returns
+     False (or a False-like value) when applied to the cell's value,
+     that row will be marked for deletion.
 
     :param bool_oper: When using more than one delete conditions
-    (i.e. more than one key in the dict), use this to determine
-    whether to apply OR, AND, or XOR to the resulting rows to be
-    deleted.  Pass one of the following:  'AND', 'OR', 'XOR'.
-    (Defaults to 'AND'.)
+     (i.e. more than one key in the dict), use this to determine
+     whether to apply OR, AND, or XOR to the resulting rows to be
+     selected.  Pass one of the following:  ``'AND'``, ``'OR'``,
+     ``'XOR'``. (Defaults to ``'AND'``.)
 
     :param output_filename: The filename (NOT the full path) to which to
-    the copied workbook. Should include the '.xlsx' suffix.
+     the copied workbook. Should include the '.xlsx' suffix.
 
     :param copy_to_dir: Directory in which to save the copied workbook.
-    If not specified, will use the same directory as the base
-    spreadsheet.
+     If not specified, will use the same directory as the base
+     spreadsheet.
 
     :param protected_rows: (Optional) A list-like object containing the
-    rows that should never be deleted. Rows before `first_deletable_row`
-    and the header row will be automatically added.
+     rows that should never be deleted. Rows before ``first_deletable_row``
+     and the header row will be automatically added.
 
     :param rename_ws: (Optional) A string, for how to rename the
-    modified worksheet. Defaults to None, in which case, it will not be
-    renamed. WARNING: Using this feature will prevent `sanity_check()`
-    from working.
+     modified worksheet. Defaults to None, in which case, it will not be
+     renamed.
 
     :param formulas: (Optional) A dict keyed by column name (i.e. "E")
     whose values are a function that generates the formula, based on the
-    row number -- such as:
-        Column R --> =F5*AB5/$S$1  (for an example row 5)
-        Column S --> =AB5*AC5  (for an example row 5)
-    formulas = {
-        "R": lambda row_num: "=F{0}*AB{0}/$S$1".format(row_num),
-        "S": lambda row_num: "=AB{0}*AC{0}".format(row_num)
-    }
-    :return: A WorkbookWrapper object. (Access its ``.new_fp`` for the
-    filepath to the copied spreadsheet.)
+    row number.
+
+      ..Example::
+
+        # Column R --> =F5*AB5/$S$1  (for an example row 5)
+        # Column S --> =AB5*AC5  (for an example row 5)
+        formulas = {
+            "R": lambda row_num: "=F{0}*AB{0}/$S$1".format(row_num),
+            "S": lambda row_num: "=AB{0}*AC{0}".format(row_num)
+        }
+
+    :param load_workbook_kwargs: (Optional) Keyword arguments to
+         pass through to the ``openpyxl.load_workbook()`` method. See
+         documentation on ``openpyxl.load_workbook()`` for optional
+         parameters.
+
+         ..warning::
+           This functionality is not strictly supported by the
+           ``xlsx_copycull`` module. You may run into unexpected
+           behavior or errors.
+
+    :return: A ``WorkbookWrapper`` object. (Access its ``.new_fp`` for
+     the filepath to the copied spreadsheet.)
     """
 
     # Wrap, copy, and load our workbook
     wbwp = WorkbookWrapper(
         wb_fp=wb_fp, output_filename=output_filename, copy_to_dir=copy_to_dir)
-
+    wbwp.load_wb(**load_workbook_kwargs)
     # Stage our worksheet, and grab the resulting WorksheetWrapper obj.
     wswp = wbwp.stage_ws(
         ws_name=ws_name,
@@ -708,7 +750,7 @@ def copycull(
         rename_ws=rename_ws)
 
     # Cull down to the desired rows.
-    wswp.cull(delete_conditions=delete_conditions, bool_oper=bool_oper)
+    wswp.cull(select_conditions=select_conditions, bool_oper=bool_oper)
 
     # Add the requested formulas (if any).
     wswp.add_formulas(formulas=formulas)
@@ -726,7 +768,7 @@ def find_ranges(nums: set) -> list:
     tuples, of the first and last numbers (inclusive) in each sequence.
     :param nums: A set of integers.
     :return: A list of 2-tuples of integers, being the min and max
-    of each range (inclusive).
+     of each range (inclusive).
     """
     nnums = list(nums)
     nnums.sort()
@@ -743,11 +785,12 @@ def add_formulas_to_column(ws, column: str, rows: list, formula):
     :param ws: An openpyxl worksheet.
     :param column: The column's letter name (i.e. "D").
     :param rows: A list of integers, being the row numbers where to add
-    the formula. (Indexed to 1)
+     the formula. (Indexed to 1)
     :param formula: A function that will generate a formula based on the
-    current row number -- such as:
-        lambda row_num: "=F{0}*AB{0}/$S$1".format(row_num)
-            --> Generates '=F5*AB5/$S$1'   (for an example row 5).
+     current row number -- such as::
+
+        # Generates '=F5*AB5/$S$1'   (for an example row 5).
+        formula = lambda row_num: "=F{0}*AB{0}/$S$1".format(row_num)
     :return: None.
     """
     for row in rows:
@@ -755,11 +798,3 @@ def add_formulas_to_column(ws, column: str, rows: list, formula):
         ws[cell_name] = formula(row)
         ws[cell_name].number_format = "General"
     return None
-
-
-__all__ = [
-    copycull,
-    add_formulas_to_column,
-    WorkbookWrapper,
-    WorksheetWrapper
-]
