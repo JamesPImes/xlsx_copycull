@@ -271,7 +271,7 @@ class WorkbookWrapper:
         return None
 
     def mandate_loaded(self):
-        """Raise an error if the wb is not currently loaded."""
+        """Raise an error if the ``.wb`` is not currently loaded."""
         if not self.is_loaded:
             raise RuntimeError("Workbook is not currently open. Use ``.load_wb()`` method.")
         return None
