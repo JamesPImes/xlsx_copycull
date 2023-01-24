@@ -455,8 +455,8 @@ class WorksheetWrapper:
         :param bool_oper: When using more than one select conditions
          (i.e. more than one key in the dict), use this to determine
          whether to apply OR, AND, or XOR to the resulting rows to be
-         selected.  Pass one of the following:  'AND', 'OR', 'XOR'.
-         (Defaults to 'AND'.)
+         selected.  Pass one of the following:  ``'AND'``, ``'OR'``,
+         ``'XOR'``. (Defaults to ``'AND'``.)
 
         :param protected_rows: (Optional) A list-like object containing
          the rows that should never be deleted. If not specified here,
