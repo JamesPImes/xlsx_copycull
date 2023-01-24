@@ -50,7 +50,8 @@ The report directory after report forms were generated:
 
 ![ss2](imgs/screenshot_02.png)
 
-Team 7 report form:
+Team 7 report form (note that Item ID 44 fell off, because it cost only
+$7.12/per):
 
 ![ss3](imgs/screenshot_03.png)
 
