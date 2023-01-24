@@ -96,28 +96,28 @@ class WorkbookWrapper:
             Using ``no_copy`` will irrevocably modify the original
             spreadsheet.
         """
-        self.uid = uid
-        self.orig_fp = Path(orig_fp)
-        if no_copy:
-            self.copy_fp = self.orig_fp
-        elif self.orig_fp == self.copy_fp:
-            raise ValueError(
-                "Cannot copy source to its same filepath."
-                "Use `no_copy=True` to modify the original file.")
-        elif copy_fp is None:
-            raise ValueError(
-                "specify `copy_fp=<path>` to create a copy, "
-                "or use `no_copy=True` to modify the original file.")
-        else:
-            self.copy_fp = Path(copy_fp)
-            self.copy_original()
-
         # a dict of subordinate WorksheetWrapper objects
         self.ws_dict = {}
         # The openpyxl workbook -- will be set to None whenever the wb
         # is NOT currently open.  (Check if this is currently set with
         # the property `self.is_loaded`)
         self.wb = None
+
+        self.uid = uid
+        self.orig_fp = Path(orig_fp)
+        if no_copy:
+            self.copy_fp = self.orig_fp
+        elif copy_fp is None:
+            raise ValueError(
+                "specify `copy_fp=<path>` to create a copy, "
+                "or use `no_copy=True` to modify the original file.")
+        elif self.orig_fp == Path(copy_fp):
+            raise ValueError(
+                "Cannot copy source to its same filepath."
+                "Use `no_copy=True` to modify the original file.")
+        else:
+            self.copy_fp = Path(copy_fp)
+            self.copy_original()
 
     @property
     def is_loaded(self):
@@ -480,30 +480,30 @@ class WorksheetWrapper:
 
         header_row = self.header_row
         ws = self.ws
-        all_to_delete = []
+        all_to_keep = []
         # Apply each select condition to the appropriate column.
-        for field, select_condition in select_conditions.items():
+        for field, keepable in select_conditions.items():
             match_col = self.find_match_col(header_row, field)
+            # Keep all those rows that match our criteria or are protected.
+            to_keep = []
+            for row_num in range(header_row + 1, ws.max_row + 1):
+                if row_num in protected_rows:
+                    to_keep.append(row_num)
+                cell_val = ws.cell(row=row_num, column=match_col).value
+                if keepable(cell_val):
+                    to_keep.append(row_num)
+            all_to_keep.append(set(to_keep))
 
-            # Mark for deletion all those rows that do NOT match our criteria.
-            to_delete = (
-                j for j in range(1, ws.max_row + 1)
-                if (j not in protected_rows
-                    and not select_condition(ws.cell(row=j, column=match_col).value)
-                    )
-            )
-            all_to_delete.append(set(to_delete))
+        # Apply the boolean operator to determine which rows to keep.
+        final_to_keep = self._apply_bool_operator(all_to_keep, bool_oper)
+        final_to_keep.update(protected_rows)
+        # Delete everything else.
+        to_delete = set(range(1, ws.max_row + 1)) - final_to_keep
 
-        # Apply the boolean operator to determine which rows to delete.
-        final_to_delete = self._apply_bool_operator(all_to_delete, bool_oper)
-
-        # convert our raw to_delete list down to a list of 2-tuples (ranges,
-        # inclusive of min/max)
-        rges = find_ranges(final_to_delete)
-
-        # Delete ranges of rows from bottom-up.
+        # Convert our raw to_delete list down to a list of 2-tuples (ranges,
+        # inclusive of min/max), and delete those from bottom-up.
+        rges = find_ranges(to_delete)
         rges.reverse()
-
         for rge in rges:
             row = rge[0]
             num_rows_to_delete = rge[1] - rge[0] + 1
@@ -512,11 +512,11 @@ class WorksheetWrapper:
         # Adjust any protected row numbers upward, if any higher rows
         # were deleted
         protected_rows_after_cull = []
-        for rn in protected_rows:
+        for row_num in protected_rows:
             for rge in rges:
-                if rge[1] < rn:
-                    rn -= (rge[1] - rge[0] + 1)
-            protected_rows_after_cull.append(rn)
+                if rge[1] < row_num:
+                    row_num -= (rge[1] - rge[0] + 1)
+            protected_rows_after_cull.append(row_num)
 
         new_protected_rows = set(protected_rows_after_cull)
         self.last_protected_rows = new_protected_rows
