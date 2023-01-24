@@ -14,7 +14,6 @@ import openpyxl
 
 
 __all__ = [
-    'copycull',
     'add_formulas_to_column',
     'WorkbookWrapper',
     'WorksheetWrapper',
@@ -681,117 +680,6 @@ class WorksheetWrapper:
                 f"`operator` must be one of ['OR', 'AND', 'XOR']. "
                 f"Passed {operator!r}")
         return final
-
-
-def copycull(
-        orig_fp: Path,
-        copy_fp: Path,
-        ws_name: str,
-        header_row: int,
-        select_conditions: dict,
-        bool_oper: str = 'AND',
-        first_modifiable_row: int = -1,
-        protected_rows=None,
-        rename_ws=None,
-        formulas=None,
-        **load_workbook_kwargs
-):
-    """
-    Copy a target spreadsheet and cull the copy down to only those rows
-    that match the ``select_conditions``.  Optionally add Excel formulas
-    with ``formulas=<dict>`` (see below).
-
-    (A function that combines the basic functionality of
-    ``WorkbookWrapper`` and ``WorksheetWrapper`` objects. Returns the
-    ``WorkbookWrapper`` object.)
-
-    :param orig_fp: The filepath to the source ``.xlsx`` or ``.xlsm``
-     file.
-
-    :param copy_fp: Filepath at which to save the copied workbook. The
-     filename should end in ``'.xlsx'`` or ``'.xlsm'``.
-
-    :param ws_name: The name of the worksheet within that copied
-     workbook to cull.
-
-    :param header_row: The row containing headers (an int, indexed to 1)
-
-    :param first_modifiable_row: (Optional) The first row that may be
-     deleted (an int, indexed to 1). If not set, will default to the
-     first row after the `header_row`.
-
-    :param select_conditions: A dict of column_header-to-
-     select_condition pairs, to determine which rows should be kept.
-     Specifically, keyed by the header of the column to check under, and
-     whose value is a function to be applied to the value of the cell
-     under that column, which returns a bool. If the function returns
-     False (or a False-like value) when applied to the cell's value,
-     that row will be marked for deletion.
-
-    :param bool_oper: When using more than one delete conditions
-     (i.e. more than one key in the dict), use this to determine
-     whether to apply OR, AND, or XOR to the resulting rows to be
-     selected.  Pass one of the following:  ``'AND'``, ``'OR'``,
-     ``'XOR'``. (Defaults to ``'AND'``.)
-
-    :param protected_rows: (Optional) A list-like object containing the
-     rows that should never be deleted. Rows before ``first_deletable_row``
-     and the header row will be automatically added.
-
-    :param rename_ws: (Optional) A string, for how to rename the
-     modified worksheet. Defaults to None, in which case, it will not be
-     renamed.
-
-    :param formulas: (Optional) A dict keyed by column name (i.e. "E")
-    whose values are a function that generates the formula, based on the
-    row number.
-
-      ..Example::
-
-        # Column R --> =F5*AB5/$S$1  (for an example row 5)
-        # Column S --> =AB5*AC5  (for an example row 5)
-        formulas = {
-            "R": lambda row_num: "=F{0}*AB{0}/$S$1".format(row_num),
-            "S": lambda row_num: "=AB{0}*AC{0}".format(row_num)
-        }
-
-    :param load_workbook_kwargs: (Optional) Keyword arguments to
-         pass through to the ``openpyxl.load_workbook()`` method. See
-         documentation on ``openpyxl.load_workbook()`` for optional
-         parameters.
-
-         .. warning::
-           This functionality is not strictly supported by the
-           ``xlsx_copycull`` module. You may run into unexpected
-           behavior or errors.
-
-    :return: A ``WorkbookWrapper`` object. (Access its ``.copy_fp`` for
-     the filepath to the copied spreadsheet.)
-    """
-
-    # Wrap, copy, and load our workbook
-    wbwp = WorkbookWrapper(orig_fp=orig_fp, copy_fp=copy_fp)
-    wbwp.load_wb(**load_workbook_kwargs)
-    # Stage our worksheet, and grab the resulting WorksheetWrapper obj.
-    wswp = wbwp.stage_ws(
-        ws_name=ws_name,
-        header_row=header_row,
-        first_modifiable_row=first_modifiable_row,
-        protected_rows=protected_rows,
-        rename_ws=rename_ws)
-
-    # Cull down to the desired rows.
-    wswp.cull(select_conditions=select_conditions, bool_oper=bool_oper)
-
-    # Add the requested formulas (if any).
-    wswp.add_formulas(formulas=formulas)
-
-    # Close and save our workbook.
-    wbwp.save_wb()
-    wbwp.close_wb()
-
-    # Return the WorkbookWrapper.
-    return wbwp
 
 
 def find_ranges(nums: set) -> list:
