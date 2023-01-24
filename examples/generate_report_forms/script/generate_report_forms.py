@@ -40,15 +40,19 @@ if __name__ == '__main__':
 
         # Copy the master spreadsheet using that filename.
         wb_wrapper = xlsx_copycull.WorkbookWrapper(
-            wb_fp=master_spreadsheet,
-            output_filename=report_name,
-            copy_to_dir=report_directory)
+            orig_fp=master_spreadsheet,
+            copy_fp=report_directory / report_name)
+        wb_wrapper.load_wb()
 
-        # We'll delete anything that is not at least $10.00/item; or
-        # anything that is another team's expense.
-        delete_conditions = {
-            'Price Per Item': lambda ppi: ppi < 10,
-            'Team Code': lambda tc: tc != team_code
+        # We'll keep only items that cost at least $10.00/item, and
+        # whose costs were incurred by this team.
+        # If this were a SQL query, it might look like:
+        #    SELECT *
+        #    FROM SomeTable
+        #    WHERE price_per_item >= 10 AND team_code = '<this team>';
+        select_conditions = {
+            'Price Per Item': lambda ppi: ppi >= 10,
+            'Team Code': lambda tc: tc == team_code
         }
 
         # Formula in Column G to multiply each row's C-value by E-value.
@@ -65,6 +69,7 @@ if __name__ == '__main__':
         )
 
         # Delete unwanted rows; add formulas; and save/close.
-        ws_wrapper.cull(delete_conditions=delete_conditions, bool_oper='OR')
+        ws_wrapper.cull(select_conditions=select_conditions, bool_oper='AND')
         ws_wrapper.add_formulas(formulas_to_add)
-        wb_wrapper.close_wb(save=True)
+        wb_wrapper.save_wb()
+        wb_wrapper.close_wb()
