@@ -15,16 +15,23 @@ person(s) tasked with reviewing the data for each team.
 """
 
 from pathlib import Path
-import xlsx_copycull
+from openpyxl.styles.numbers import BUILTIN_FORMATS
+from src import xlsx_copycull
+
+# This format code will be used for cells that we add formulas to.
+# Reference number_format codes here -- #44 is Excel's built-in
+# 'Accounting' with 2 decimal places:
+# https://openpyxl.readthedocs.io/en/stable/_modules/openpyxl/styles/numbers.html
+ACCOUNTING_FORMAT = BUILTIN_FORMATS[44]
 
 if __name__ == '__main__':
     # Master spreadsheet location and information.
-    master_spreadsheet = Path(r"original\purchase_data.xlsx")
+    master_spreadsheet = Path(r"examples\generate_report_forms\script\original\purchase_data.xlsx")
     sheet_name = 'Accounting'
     header_row = 1
 
     # Where we'll save the report forms.
-    report_directory = Path(r"reports")
+    report_directory = Path(r"examples\generate_report_forms\script\reports")
 
     # The second and third rows contain samples for the reviewers to
     # reference, so we want to keep them in each copy.
@@ -59,6 +66,11 @@ if __name__ == '__main__':
         formulas_to_add = {
             'G': lambda row_num: f"=C{row_num}*E{row_num}"
         }
+        # Apply 'Accounting' format to each of the resulting formulas
+        # in Column G.
+        num_formats = {
+            'G': ACCOUNTING_FORMAT
+        }
 
         # Stage the 'Accounting' worksheet and rename it for this team.
         ws_wrapper = wb_wrapper.stage_ws(
@@ -68,8 +80,16 @@ if __name__ == '__main__':
             rename_ws=f"{team_code:02d}_expense_verif"
         )
 
-        # Delete unwanted rows; add formulas; and save/close.
+        # Delete unwanted rows
         ws_wrapper.cull(select_conditions=select_conditions, bool_oper='AND')
-        ws_wrapper.add_formulas(formulas_to_add)
+        # Add formulas, and add appropriate formatting to those same cells
+        modified_cells = ws_wrapper.add_formulas(
+            formulas_to_add, number_formats=num_formats)
+
+        # If we wanted to modify style on those same cells further, we
+        # could iterate over the cells in `modified_cells` (keyed by
+        # column letter, i.e. 'G'; whose value is a list of cell names).
+
+        # Save and close.
         wb_wrapper.save_wb()
         wb_wrapper.close_wb()
