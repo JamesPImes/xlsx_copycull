@@ -68,7 +68,7 @@ class FileHandler:
         :return: None
         """
         if self.temp_wbwrapper is not None:
-            self.temp_wbwrapper.close_wb(save=False)
+            self.temp_wbwrapper.close_wb()
         self.temp_wbwrapper = None
         if self.temp_dir.exists():
             for fn in os.listdir(self.temp_dir):
@@ -161,7 +161,7 @@ class UnitTest(unittest.TestCase):
         self.assertTrue(wbwp.is_loaded)
         self.assertTrue(wswp.is_loaded)
         # Test while closed (assert False).
-        wbwp.close_wb(save=False)
+        wbwp.close_wb()
         self.assertFalse(wbwp.is_loaded)
         self.assertFalse(wswp.is_loaded)
 
@@ -194,7 +194,7 @@ class UnitTest(unittest.TestCase):
         self.assertTrue(isinstance(wswp.ws, Worksheet))
         # Manually set worksheet to an actual value.
         ws_holder = wswp.ws
-        wbwp.close_wb(save=False)
+        wbwp.close_wb()
         self.assertTrue(wswp.ws is None)
         wswp.ws = ws_holder
         # This should reset all worksheets to None.
