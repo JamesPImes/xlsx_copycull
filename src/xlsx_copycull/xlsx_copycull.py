@@ -567,7 +567,13 @@ class WorksheetWrapper:
         ]
         return row_nums
 
-    def add_formulas(self, formulas, rows=None, protected_rows=None):
+    def add_formulas(
+            self,
+            formulas,
+            rows=None,
+            protected_rows=None,
+            number_formats: dict = None,
+    ) -> dict[str: list[str]]:
         """
         Add formulas to the working spreadsheet in ``.ws``.
 
@@ -601,8 +607,28 @@ class WorksheetWrapper:
          initialized. See comments under ``.cull()`` for a more complete
          discussion.
 
-        :return: None
+        :param number_formats: (Optional) A dict, keyed by column
+         letter, whose values are the ``'number_format'`` to apply to
+         any cells in that column to which we're adding a formula.
+         Reference [openpyxl's documentation](https://openpyxl.readthedocs.io/en/stable/_modules/openpyxl/styles/numbers.html)
+         for possible values and built-in options for ``number_format``.
+
+         .. example::
+            from openpyxl.styles.numbers import BUILTIN_FORMATS
+
+            # ...
+
+            formula_formats = {
+                "R": "General",
+                "S": BUILTIN_FORMATS[2]  # number format of '0.00'
+            }
+
+        :return: A dict, keyed by Column letter, whose values are a list
+         of the cell names that were modified (e.g.,
+         ``{'A': ['A2', 'A3']}``).
         """
+        if number_formats is None:
+            number_formats = {}
         self.mandate_loaded()
         if formulas is None:
             return None
@@ -610,11 +636,18 @@ class WorksheetWrapper:
             protected_rows = self._populate_protected_rows(protected_rows)
         if rows is None:
             rows = self.modifiable_rows(protected_rows=protected_rows)
+        modified_cells_by_column = {}
         for column, formula in formulas.items():
-            add_formulas_to_column(
-                ws=self.ws, column=column, rows=rows, formula=formula)
+            num_format = number_formats.get(column, None)
+            modified_cells = add_formulas_to_column(
+                ws=self.ws,
+                column=column,
+                rows=rows,
+                formula=formula,
+                number_format=num_format)
+            modified_cells_by_column[column] = modified_cells
         self.last_protected_rows = protected_rows
-        return None
+        return modified_cells_by_column
 
     @staticmethod
     def _apply_bool_operator(list_of_sets: list, operator: str) -> set:
@@ -776,7 +809,13 @@ def find_ranges(nums: set) -> list:
     return [*zip(starts, ends)]
 
 
-def add_formulas_to_column(ws, column: str, rows: list, formula):
+def add_formulas_to_column(
+        ws,
+        column: str,
+        rows: list,
+        formula,
+        number_format: str = None,
+) -> list[str]:
     """
     Add formulas to every row in a column in the worksheet, based on
     each row number.
@@ -790,10 +829,31 @@ def add_formulas_to_column(ws, column: str, rows: list, formula):
 
         # Generates '=F5*AB5/$S$1'   (for an example row 5).
         formula = lambda row_num: "=F{0}*AB{0}/$S$1".format(row_num)
-    :return: None.
+
+    :param number_format: (Optional) The number format to apply to each
+     cell to which a formula gets written (e.g., ``'General'``).
+
+     .. note::
+
+        Reference [openpyxl's documentation](https://openpyxl.readthedocs.io/en/stable/_modules/openpyxl/styles/numbers.html)
+        for possible values and built-in options for ``number_format``.
+
+     .. example::
+
+           from openpyxl.styles.numbers import BUILTIN_FORMATS
+           # ...
+           number_format = "General"
+           # or use one of the formats in openpyxl's builtins (this is '0.00')
+           number_format = BUILTIN_FORMATS[2]
+
+    :return: A list of all cell names that were modified (e.g.,
+     ``['A2', 'A3']``.)
     """
+    modified_cells = []
     for row in rows:
         cell_name = f"{column}{row}"
         ws[cell_name] = formula(row)
-        ws[cell_name].number_format = "General"
-    return None
+        if number_format is not None:
+            ws[cell_name].number_format = number_format
+        modified_cells.append(cell_name)
+    return modified_cells
