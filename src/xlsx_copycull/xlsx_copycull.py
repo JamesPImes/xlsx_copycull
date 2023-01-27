@@ -734,7 +734,7 @@ def add_formulas_to_column(
         rows: list,
         formula,
         number_format: str = None,
-) -> list[str]:
+) -> list:
     """
     Add formulas to every row in a column in the worksheet, based on
     each row number.
