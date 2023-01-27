@@ -123,6 +123,23 @@ class WorkbookWrapper:
         return self.wb is not None
 
     def __getitem__(self, item):
+        """
+        ``WorkbookWrapper`` objects are limitedly subscriptable, in that
+        the ``WorksheetWrapper`` objects stored in ``.ws_dict`` can be
+        accessed by the corresponding dict key (sheet name):
+
+        .. code-block::
+
+            wb_wrapper = xlsx_copycull.WorkbookWrapper(...)
+            wb_wrapper.stage_ws('Sheet1', ...)
+
+            sheet_wrapper = wb_wrapper['Sheet1']
+            # ...is equivalent to...
+            sheet_wrapper = wb_wrapper.ws_dict['Sheet1']
+
+        :param item:
+        :return:
+        """
         # Subscripting passes keys through to `.ws_dict` dict attribute.
         try:
             return self.ws_dict[item]
@@ -181,6 +198,7 @@ class WorkbookWrapper:
         store that new filepath to ``.copy_fp``. (If ``fp`` is not
         specified here, will default to whatever is already set in
         ``.copy_fp``.)
+
         :param fp: The filepath to copy to.
         :param stage_new_fp: A bool, whether to set the filepath of the
          newly copied workbook as the target workbook of this
@@ -189,6 +207,7 @@ class WorkbookWrapper:
          ``False``.
 
           .. note::
+
             If the workbook is currently open and ``stage_new_fp=True``
             is passed, it will raise a ``RuntimeError``. To avoid that
             error, save and close the workbook first:
@@ -216,6 +235,7 @@ class WorkbookWrapper:
         """
         Delete a worksheet from the workbook. (The worksheet need not be
         staged.)
+
         :param ws_name: The name of the worksheet to discard.
         :return: None
         """
@@ -225,20 +245,21 @@ class WorkbookWrapper:
             self.ws_dict.pop(ws_name)
         return None
 
-    def load_wb(self, **load_workbook_kwargs):
+    def load_wb(self, **_load_workbook_kwargs):
         """
         Open the workbook at the filepath stored in ``.copy_fp`` (and
         behind the scenes, inform all subordinate worksheets that they
         are now open for modification -- by setting their ``.ws``
-        attributes to the appropriate openpyxl worksheet object.)
+        attributes to the appropriate openpyxl worksheet object).
 
-        :param load_workbook_kwargs: (Optional) Keyword arguments to
-         pass through to the ``openpyxl.load_workbook()`` method. See
-         documentation on ``openpyxl.load_workbook()`` for optional
-         parameters.
+        :param _load_workbook_kwargs: (Optional, unsupported) Keyword
+         arguments to pass through to the ``openpyxl.load_workbook()``
+         method. See openpyxl's documentation_ for optional parameters.
+
+         .. _documentation: https://openpyxl.readthedocs.io/en/stable/api/openpyxl.reader.excel.html#openpyxl.reader.excel.load_workbook
 
          .. warning::
-           This functionality is not strictly supported by the
+           ``load_workbook_kwargs`` is not strictly supported by the
            ``xlsx_copycull`` module. You may run into unexpected
            behavior or errors.
 
@@ -246,7 +267,7 @@ class WorkbookWrapper:
         """
         if self.is_loaded:
             return
-        self.wb = openpyxl.load_workbook(self.copy_fp, **load_workbook_kwargs)
+        self.wb = openpyxl.load_workbook(self.copy_fp, **_load_workbook_kwargs)
         # Update all of the staged worksheets.
         self._inform_subordinates()
         return None
@@ -285,6 +306,7 @@ class WorkbookWrapper:
     def save_wb(self, fp=None) -> None:
         """
         Save the ``.xlsx`` or ``.xlsm`` file.
+
         :param fp: The filepath at which to save the workbook. If not
          specified here, will save to the path currently configured in
          the ``.copy_fp`` attribute.
@@ -311,7 +333,10 @@ class WorkbookWrapper:
         Note that renaming the worksheet will also modify the
         corresponding ``.ws_dict`` key::
 
-            ws_wrapper1 = wb_wrapper.ws_dict['Sheet1']  # OK
+            wb_wrapper_obj = xlsx_copycull.WorkbookWrapper(<...>)
+            wb_wrapper_obj.load_wb()
+            wb_wrapper_obj.stage_ws('Sheet1', <...>)
+            ws_wrapper1 = wb_wrapper_obj.ws_dict['Sheet1']  # OK
             ws_wrapper1 = wb_wrapper['Sheet1']  # OK
             wb_wrapper_obj.rename_ws('Sheet1', 'Prices')
             ws_wrapper1 = wb_wrapper.ws_dict['Prices']  # new sheet name
@@ -347,6 +372,7 @@ class WorksheetWrapper:
          automatically added.
 
          .. note::
+
            ``.protected_rows`` may change behind the scenes if rows are
             deleted by ``.cull()``. If rows are inserted or deleted
             outside the functionality of this module, ``.protected_rows``
@@ -529,6 +555,7 @@ class WorksheetWrapper:
         Find the match column number, based on its header name.
 
         .. note::
+
             Will return the first match, so avoid duplicate header names.
         """
 
@@ -609,15 +636,18 @@ class WorksheetWrapper:
         :param number_formats: (Optional) A dict, keyed by column
          letter, whose values are the ``'number_format'`` to apply to
          any cells in that column to which we're adding a formula.
-         Reference [openpyxl's documentation](https://openpyxl.readthedocs.io/en/stable/_modules/openpyxl/styles/numbers.html)
-         for possible values and built-in options for ``number_format``.
+         Reference openpyxl documentation_ for possible values and
+         built-in options for ``number_format``.
 
-         .. example::
+         .. _documentation: https://openpyxl.readthedocs.io/en/stable/_modules/openpyxl/styles/numbers.html
+
+         .. code-block::
+
             from openpyxl.styles.numbers import BUILTIN_FORMATS
 
             # ...
 
-            formula_formats = {
+            number_formats = {
                 "R": "General",
                 "S": BUILTIN_FORMATS[2]  # number format of '0.00'
             }
@@ -686,6 +716,7 @@ def find_ranges(nums: set) -> list:
     """
     Find ranges of consecutive integers in the set. Returns a list of
     tuples, of the first and last numbers (inclusive) in each sequence.
+
     :param nums: A set of integers.
     :return: A list of 2-tuples of integers, being the min and max
      of each range (inclusive).
@@ -709,7 +740,7 @@ def add_formulas_to_column(
     each row number.
 
     :param ws: An openpyxl worksheet.
-    :param column: The column's letter name (i.e. "D").
+    :param column: The column's letter name (i.e. ``"D"``).
     :param rows: A list of integers, being the row numbers where to add
      the formula. (Indexed to 1)
     :param formula: A function that will generate a formula based on the
@@ -720,19 +751,18 @@ def add_formulas_to_column(
 
     :param number_format: (Optional) The number format to apply to each
      cell to which a formula gets written (e.g., ``'General'``).
+     Reference openpyxl documentation_ for possible values and built-in
+     options for ``number_format``. Example:
 
-     .. note::
-
-        Reference [openpyxl's documentation](https://openpyxl.readthedocs.io/en/stable/_modules/openpyxl/styles/numbers.html)
-        for possible values and built-in options for ``number_format``.
-
-     .. example::
+     .. code-block::
 
            from openpyxl.styles.numbers import BUILTIN_FORMATS
            # ...
            number_format = "General"
-           # or use one of the formats in openpyxl's builtins (this is '0.00')
-           number_format = BUILTIN_FORMATS[2]
+           # or use one of the formats in openpyxl's built-ins.
+           number_format = BUILTIN_FORMATS[2]  # number format of '0.00'
+
+     .. _documentation: https://openpyxl.readthedocs.io/en/stable/_modules/openpyxl/styles/numbers.html
 
     :return: A list of all cell names that were modified (e.g.,
      ``['A2', 'A3']``.)
