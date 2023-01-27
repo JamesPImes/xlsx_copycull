@@ -22,6 +22,7 @@ remaining row.
 ## Table of Contents
 
 * [To Install](#install)
+* [Documentation](#docs)
 * [Quick Example](#quick_example)
 * [A more in-depth example](examples/generate_report_forms)
 * ["How To"](#howto)
@@ -43,6 +44,11 @@ remaining row.
 ```
 pip install git+https://github.com/JamesPImes/xlsx_copycull@master
 ```
+
+
+## <a name='docs'>Documentation</a>
+
+Documentation available [here](https://xlsx-copycull.readthedocs.io/).
 
 
 ## <a name='quick_example'>Quick Example</a>
