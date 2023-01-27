@@ -599,7 +599,7 @@ class WorksheetWrapper:
             rows=None,
             protected_rows=None,
             number_formats: dict = None,
-    ) -> dict[str: list[str]]:
+    ) -> dict:
         """
         Add formulas to the working spreadsheet in ``.ws``.
 
